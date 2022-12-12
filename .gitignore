@@ -1,4 +1,5 @@
-**/bin
+*.o
+*.mod
 *.out
 *.dat
 *~
