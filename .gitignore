@@ -1,0 +1,10 @@
+*.o
+*.mod
+**/mod
+**/obj
+**/bin
+*.out
+*.dat
+*~
+prem.*
+Makefile
