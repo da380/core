@@ -1,4 +1,4 @@
-module module_mesh
+module module_spherical_mesh
 
   use module_constants
   use module_physical_constants, only : bigg
@@ -847,4 +847,4 @@ contains
 
 
   
-end module module_mesh
+end module module_spherical_mesh
