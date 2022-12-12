@@ -1,5 +1,6 @@
-*.o
-*.mod
+**/obj
+**/mod
+**/bin
 *.out
 *.dat
 *~
