@@ -44,8 +44,8 @@ module module_interp
  private :: set_interp_1D_cubic,value_interp_1D_cubic, &
              delete_interp_1D_cubic
 
- 
 
+ 
  type :: interp_2D
     private
     logical :: built = .false.

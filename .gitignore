@@ -1,6 +1,7 @@
 **/obj
 **/mod
 **/bin
+**/work
 *.out
 *.dat
 *~

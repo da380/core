@@ -57,20 +57,14 @@ module module_spherical_harmonics
      generic :: filter => filter_spherical_harmonic_coefficients_complex, &
                           filter_spherical_harmonic_coefficients_real
   end type gauss_legendre_grid
-
+  
   
 contains
 
 
-  !=======================================================================!
-  !                     procedures for the grid type                      !
-  !=======================================================================!
-
-
-  !--------------------------------------!
-  !             basic routines           !
-  !--------------------------------------!
-
+  !-------------------------------------------------!
+  !           procedures for the grid type          !
+  !-------------------------------------------------!
   
   subroutine delete_gauss_legendre_grid(grid)
     use module_fftw3
@@ -704,8 +698,6 @@ contains
   end function integrate_gauss_legendre_grid_real
 
   
-  
-  
   integer(i4b) function index_complex_spherical_harmonic_expansion(l,m) result(i)
     implicit none
     integer(i4b), intent(in) :: l,m
@@ -757,6 +749,41 @@ contains
   end subroutine filter_spherical_harmonic_coefficients_real
 
 
+  complex(dpc) function complex_spherical_harmonic_sum(lmax,n,ulm,th,ph) result(f)
+    integer(i4b), intent(in) :: lmax
+    complex(dpc), dimension((lmax+1)**2), intent(in) :: ulm
+    real(dp), intent(in) :: th,ph
+    integer(i4b) :: ilm
+    type(wigner_value) :: d
+    complex(dpc) :: ep,em,fp,fm
+    call d%init(th,n,lmax)    
+    f = 0.0_dp
+    ilm = 0
+    do l = 0,lmax
+       call d%next()
+       if(l < abs(n)) then
+          ilm = ilm + 2*l+1
+          cycle
+       end if
+       ilm = ilm+1
+       f = f + ulm(ilm)*d%get(n,0)
+       ep = exp(ii*ph)
+       em = 1.0_dp/ep
+       fp = 1.0_dp
+       fm = 1.0_dp
+       do m = 1,l          
+          ilm = ilm+1
+          fp = fp*ep
+          f = f + ulm(ilm)*d%get(n, m)*fp
+          ilm = ilm+1
+          fm = fm*em
+          f = f + ulm(ilm)*d%get(n,-m)*fp          
+       end do       
+    end do    
+    return
+  end function complex_spherical_harmonic_sum
+
+  
 
 end module module_spherical_harmonics
 

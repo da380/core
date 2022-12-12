@@ -72,21 +72,21 @@ module module_random_fields
   end interface GRF_1D_Fourier
 
    
-  type gaussain_random_scalar_field_sphere
-     logical :: allocated = .false.
-     integer(i4b) :: lmax
-     real(dp), dimension(:), allocatable :: Q_l
-     complex(dpc), dimension(:), allocatable :: mlm
-     complex(dpc), dimension(:), allocatable :: ulm
-   contains
-     procedure :: delete => delete_gaussain_random_scalar_field_sphere
-     procedure :: build => build_gaussain_random_scalar_field_sphere
-     procedure :: set_mean_coefficients_gaussain_random_scalar_field_sphere
-     procedure :: set_mean_values_gaussain_random_scalar_field_sphere
-     generic   :: set_mean => set_mean_coefficients_gaussain_random_scalar_field_sphere, &
-                              set_mean_values_gaussain_random_scalar_field_sphere
-     procedure :: realise => realise_gaussain_random_scalar_field_sphere
-  end type gaussain_random_scalar_field_sphere
+!  type gaussain_random_scalar_field_sphere
+!     logical :: allocated = .false.
+!     integer(i4b) :: lmax
+!     real(dp), dimension(:), allocatable :: Q_l
+!     complex(dpc), dimension(:), allocatable :: mlm
+!     complex(dpc), dimension(:), allocatable :: ulm
+!   contains
+!     procedure :: delete => delete_gaussain_random_scalar_field_sphere
+!     procedure :: build => build_gaussain_random_scalar_field_sphere
+!     procedure :: set_mean_coefficients_gaussain_random_scalar_field_sphere
+!     procedure :: set_mean_values_gaussain_random_scalar_field_sphere
+!     generic   :: set_mean => set_mean_coefficients_gaussain_random_scalar_field_sphere, &
+!                              set_mean_values_gaussain_random_scalar_field_sphere
+!     procedure :: realise => realise_gaussain_random_scalar_field_sphere
+!  end type gaussain_random_scalar_field_sphere
 
   
 contains
@@ -273,7 +273,6 @@ contains
     i1 = ibool(1,ispec1)
     i2 = ibool(ngll,ispec2)
     rfun%mdim = i2-i1+1
-
     
     allocate(rfun%evec(rfun%mdim,rfun%ndim),rfun%x(rfun%mdim))
     do i = 1,rfun%ndim
@@ -479,79 +478,78 @@ contains
 
 
   
-  subroutine delete_gaussain_random_scalar_field_sphere(self)
-    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
-    if(.not.self%allocated) return
-    deallocate(self%mlm,self%Q_l)
-    self%allocated = .false.
-    return
-  end subroutine delete_gaussain_random_scalar_field_sphere
+!  subroutine delete_gaussain_random_scalar_field_sphere(self)
+!    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
+!    if(.not.self%allocated) return
+!    deallocate(self%mlm,self%Q_l)
+!    self%allocated = .false.
+!    return
+!  end subroutine delete_gaussain_random_scalar_field_sphere
   
-  subroutine build_gaussain_random_scalar_field_sphere(self,grid,lambda,s)
-    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
-    type(gauss_legendre_grid), intent(in) :: grid
-    real(dp), intent(in) :: lambda,s
-
-    integer(i4b) :: l
+!  subroutine build_gaussain_random_scalar_field_sphere(self,grid,lambda,s)
+!    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
+!    type(gauss_legendre_grid), intent(in) :: grid
+!    real(dp), intent(in) :: lambda,s
+!    integer(i4b) :: l
     
-    call self%delete()
-    self%lmax = grid%lmax
-    ! allocate arrays
-    allocate(self%mlm(grid%ncoef_r))
-    allocate(self%ulm(grid%ncoef_r))
-    self%mlm = 0.0_dp
+!    call self%delete()
+!    self%lmax = grid%lmax
+!    ! allocate arrays
+!    allocate(self%mlm(grid%ncoef_r))
+!    allocate(self%ulm(grid%ncoef_r))
+!    self%mlm = 0.0_dp
 
-    allocate(self%Q_l(0:grid%lmax))
-    do l = 0,self%lmax
-       self%Q_l(l) = (1.0_dp + lambda*lambda*l*(l+1))**(-s)
-    end do
+!    allocate(self%Q_l(0:grid%lmax))
+!    do l = 0,self%lmax
+!       self%Q_l(l) = (1.0_dp + lambda*lambda*l*(l+1))**(-s)
+!    end do
     
-    return
-  end subroutine build_gaussain_random_scalar_field_sphere
+!    return
+!  end subroutine build_gaussain_random_scalar_field_sphere
   
 
-  subroutine realise_gaussain_random_scalar_field_sphere(self)
-    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
+!  subroutine realise_gaussain_random_scalar_field_sphere(self)
+!    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
 
-    integer(i4b) :: l,m,lmax,ncoef,ilm
-    real(dp) :: r1,r2,std
+!    integer(i4b) :: l,m,lmax,ncoef,ilm
+!    real(dp) :: r1,r2,std
 
-    lmax = self%lmax
-    ncoef = (lmax+1)*(lmax+2)/2
+!    lmax = self%lmax
+!    ncoef = (lmax+1)*(lmax+2)/2
 
-    call random_seed()    
-    ilm = 0
-    do l = 0,lmax
-       std = sqrt(self%Q_l(l))
-       ilm = ilm + 1
-       call normal_random_variable(r1)
-       self%ulm(ilm) = self%mlm(ilm) + std*r1       
-       do m = 1,l
-          ilm = ilm+1
-          call normal_random_variable(r1,r2)
-          self%ulm(ilm) = self%mlm(ilm) + std*(r1+ii*r2)
-       end do
-    end do
+!    call random_seed()    
+!    ilm = 0
+!    do l = 0,lmax
+!       std = sqrt(self%Q_l(l))
+!       ilm = ilm + 1
+!       call normal_random_variable(r1)
+!       self%ulm(ilm) = self%mlm(ilm) + std*r1       
+!       do m = 1,l
+!          ilm = ilm+1
+!          call normal_random_variable(r1,r2)
+!          self%ulm(ilm) = self%mlm(ilm) + std*(r1+ii*r2)
+!       end do
+!    end do
 
-    return
-  end subroutine realise_gaussain_random_scalar_field_sphere
+!    return
+!  end subroutine realise_gaussain_random_scalar_field_sphere
 
-  subroutine set_mean_coefficients_gaussain_random_scalar_field_sphere(self,grid,mlm)
-    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
-    type(gauss_legendre_grid), intent(in) :: grid
-    complex(dpc), dimension(grid%ncoef_r), intent(in) :: mlm
-    self%mlm = mlm
-    return
-  end subroutine set_mean_coefficients_gaussain_random_scalar_field_sphere
+!  subroutine set_mean_coefficients_gaussain_random_scalar_field_sphere(self,grid,mlm)
+!    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
+!    type(gauss_legendre_grid), intent(in) :: grid
+!    complex(dpc), dimension(grid%ncoef_r), intent(in) :: mlm
+!    self%mlm = mlm
+!    return
+!  end subroutine set_mean_coefficients_gaussain_random_scalar_field_sphere
 
 
-  subroutine set_mean_values_gaussain_random_scalar_field_sphere(self,grid,m)
-    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
-    type(gauss_legendre_grid), intent(in) :: grid
-    real(dp), dimension(grid%nph,grid%nth), intent(in) :: m
-    call grid%SH_trans(m,self%mlm)
-    return
-  end subroutine set_mean_values_gaussain_random_scalar_field_sphere
+!  subroutine set_mean_values_gaussain_random_scalar_field_sphere(self,grid,m)
+!    class(gaussain_random_scalar_field_sphere), intent(inout) :: self
+!    type(gauss_legendre_grid), intent(in) :: grid
+!    real(dp), dimension(grid%nph,grid%nth), intent(in) :: m
+!    call grid%SH_trans(m,self%mlm)
+!    return
+!  end subroutine set_mean_values_gaussain_random_scalar_field_sphere
 
 
   
