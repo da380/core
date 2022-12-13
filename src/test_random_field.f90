@@ -7,15 +7,16 @@ program test_random_field
   implicit none
 
   integer(i4b) :: lmax,l,ith,iph,io,inode,ispec,i,nx,n
-  real(dp) :: lambda,s,th,ph,x1,x2,x,y,sigma,dx,x0
+  real(dp) :: lambda,s,th,ph,x1,x2,x,y,sigma,dx,x0,th0,ph0
   real(dp), dimension(:), allocatable :: xx,ff
   real(dp), dimension(:,:), allocatable :: v
+  complex(dpc), dimension(:), allocatable :: vlm
   type(gauss_legendre_grid) :: grid
-!  type(gaussain_random_scalar_field_sphere) :: u
-  type(interp_1D_cubic) :: fun1,cfun1
-  type(interp_1D_cubic) :: fun2,cfun2
-  class(GRF_1D), allocatable :: rfun1,rfun2
+  type(interp_1D_cubic) :: fun,cfun
+  class(GRF_1D), allocatable :: rfun
 
+  class(GRF_S2), allocatable :: rfun_S2
+  
 
   !---------------------------------------------!
   !     test random functions on an interval    !
@@ -28,28 +29,23 @@ program test_random_field
   if(.not.found_command_argument('-sigma',sigma)) stop 'sigma missing'
 
 
-  rfun1 =     GRF_1D_SEM(x1,x2,lambda,s,sigma)
-  rfun2 = GRF_1D_Fourier(x1,x2,lambda,s,sigma)
+  rfun = GRF_1D_Fourier(x1,x2,lambda,s,sigma)
 
-  x0 = 0.2_dp
-  call rfun1%corr(x0,cfun1)
-  call rfun1%realise(fun1)
+  x0 = 0.1_dp
 
-  call rfun2%corr(x0,cfun2)
-  call rfun2%realise(fun2)
+  call rfun%corr(x0,cfun)
+  call rfun%realise(fun)
   
-  nx = 20*(x2-x1)/lambda
+  nx = 50*(x2-x1)/lambda
   dx = (x2-x1)/(nx-1)
   x0 = 0.3_dp
   open(newunit = io,file='random.out')
   do i = 1,nx
      x = x1 + (i-1)*dx
-     write(io,*) x,cfun1%f(x),cfun2%f(x),cfun1%f(x)-cfun2%f(x)
+         write(io,*) x,fun%f(x),cfun%f(x)
   end do
   close(io)
   
-
-
   
  
   
@@ -58,36 +54,41 @@ program test_random_field
   !   test random functions on a sphere    !
   !----------------------------------------!
 
-  ! get arguments
-!  if(.not.found_command_argument('-lmax',lmax)) stop 'lmax missing'
-!  if(.not.found_command_argument('-s',s)) stop 's missing'
-!  if(.not.found_command_argument('-lambda',lambda)) stop 'lambda missing'
+
+  rfun_S2 = build_GRF_S2_SH(lambda,s,sigma)
   
   ! build the grid
-!  call grid%build(lmax)  
+  lmax = max(128,rfun_S2%lmax)
 
-  ! allocate the random field
-!  call u%build(grid,lambda,s)
+  call grid%build(lmax)  
 
   ! allocate coefficient array and spatial array
-!  allocate(v(grid%nph,grid%nth))
+  allocate(vlm(grid%ncoef_r))
+  allocate(v(grid%nph,grid%nth))
   
   ! form realisation of the random field
-!  call u%realise()
+  call rfun_S2%realise(vlm)
+  th0 = -20.0_dp
+  ph0 = 100.0_dp
+  th0 = (90.0_dp-th0)*deg2rad
+  ph0 = ph0*deg2rad
+  call rfun_S2%corr(th0,ph0,vlm)
+  
 
-!  call grid%SH_itrans(u%ulm,v)
+  ! transform to spatial field
+  call grid%SH_itrans(vlm,v)
   
   ! write out the field
-!  open(newunit = io,file='random.out')
-!  write(io,*) grid%nth,grid%nph,0.0_dp
-!  do ith = 1,grid%nth
-!     th = grid%th(ith)
-!     do iph = 1,grid%nph
-!        ph = grid%ph(iph)
-!        write(io,*) ph,th,v(iph,ith)
-!     end do
-!  end do
-!  close(io)  
+  open(newunit = io,file='random_S2.out')
+  write(io,*) grid%nth,grid%nph,0.0_dp
+  do ith = 1,grid%nth
+     th = grid%th(ith)
+     do iph = 1,grid%nph
+        ph = grid%ph(iph)
+        write(io,*) ph,th,v(iph,ith)
+     end do
+  end do
+  close(io)  
   
   
 end program test_random_field
