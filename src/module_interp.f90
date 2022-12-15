@@ -6,7 +6,7 @@ module module_interp
 
   type :: interp_1D
      private
-     logical :: built = .false.
+     logical, public :: allocated = .false.
      integer(i4b) :: n
      integer(i4b) :: i_save = 0
      real(dp), dimension(:), allocatable :: xx
@@ -48,7 +48,7 @@ module module_interp
  
  type :: interp_2D
     private
-    logical :: built = .false.
+    logical :: allocated = .false.
     integer(i4b) :: nx
     integer(i4b) :: ny
     real(dp), dimension(:), allocatable :: xx
@@ -118,7 +118,7 @@ contains
     self%dx_save = abs(xx(n)-xx(1))/5.0_dp
 
     ! build done
-    self%built = .true.
+    self%allocated = .true.
     
     return
   end subroutine set_interp_1D
@@ -188,7 +188,7 @@ contains
     implicit none
     class(interp_1D) :: self
     deallocate(self%xx,self%ff)
-    self%built = .false.    
+    self%allocated = .false.    
     return
   end subroutine delete_interp_1D
   
@@ -391,7 +391,7 @@ contains
     implicit none
     class(interp_1D_cubic) :: self
     deallocate(self%xx,self%ff,self%ff2)
-    self%built = .false.    
+    self%allocated = .false.    
     return
   end subroutine delete_interp_1D_cubic
 
@@ -455,7 +455,7 @@ contains
     self%dy_save = abs(yy(ny)-yy(1))/5.0_dp
 
     ! build done
-    self%built = .true.
+    self%allocated = .true.
     
     return
   end subroutine set_interp_2D
@@ -467,7 +467,7 @@ contains
     implicit none
     class(interp_2D) :: self
     deallocate(self%xx,self%yy,self%ff)
-    self%built = .false.    
+    self%allocated = .false.    
     return
   end subroutine delete_interp_2D
 
@@ -606,7 +606,7 @@ contains
     integer(i4b) :: i,n
     class(interp_2D_bicubic_spline) :: self
     deallocate(self%xx,self%yy,self%ff,self%cs)    
-    self%built = .false.    
+    self%allocated = .false.    
     return
   end subroutine delete_interp_2D_bicubic_spline
 
