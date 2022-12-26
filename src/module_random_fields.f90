@@ -182,65 +182,65 @@ module module_random_fields
   !===================================================!
 
 
-  type, abstract :: GRF_B3
+  type, abstract :: GRF_R3
      real(dp) :: a,b
    contains
-     procedure(GRF_B3_delete),    deferred :: delete
-     procedure(GRF_B3_degree),    deferred :: degree
-     procedure(GRF_B3_realise),   deferred :: realise
-     procedure(GRF_B3_eval),      deferred :: eval
-     procedure(GRF_B3_corr_eval), deferred :: corr_eval
-!     procedure(GRF_B3_coef),      deferred :: coef
-!     procedure(GRF_B3_corr_coef), deferred :: corr_coef
-  end type GRF_B3
+     procedure(GRF_R3_delete),    deferred :: delete
+     procedure(GRF_R3_degree),    deferred :: degree
+     procedure(GRF_R3_realise),   deferred :: realise
+     procedure(GRF_R3_eval),      deferred :: eval
+     procedure(GRF_R3_corr_eval), deferred :: corr_eval
+!     procedure(GRF_R3_coef),      deferred :: coef
+!     procedure(GRF_R3_corr_coef), deferred :: corr_coef
+  end type GRF_R3
   
   
   abstract interface
-     subroutine GRF_B3_delete(self)
-       import :: GRF_B3
-       class(GRF_B3), intent(inout) :: self
-     end subroutine GRF_B3_delete
-     integer(i4b) function GRF_B3_degree(self)
+     subroutine GRF_R3_delete(self)
+       import :: GRF_R3
+       class(GRF_R3), intent(inout) :: self
+     end subroutine GRF_R3_delete
+     integer(i4b) function GRF_R3_degree(self)
        use module_constants
-       import :: GRF_B3
-       class(GRF_B3), intent(inout) :: self
-     end function GRF_B3_degree
-     subroutine GRF_B3_realise(self)
-       import :: GRF_B3       
-       class(GRF_B3), intent(inout) :: self
-     end subroutine GRF_B3_realise
-     real(dp) function GRF_B3_eval(self,r,th,ph)
+       import :: GRF_R3
+       class(GRF_R3), intent(inout) :: self
+     end function GRF_R3_degree
+     subroutine GRF_R3_realise(self)
+       import :: GRF_R3       
+       class(GRF_R3), intent(inout) :: self
+     end subroutine GRF_R3_realise
+     real(dp) function GRF_R3_eval(self,r,th,ph)
        use module_constants
-       import :: GRF_B3
-       class(GRF_B3), intent(inout) :: self
+       import :: GRF_R3
+       class(GRF_R3), intent(inout) :: self
        real(dp), intent(in) :: r,th,ph
-     end function GRF_B3_eval
-     real(dp) function GRF_B3_corr_eval(self,r,th,ph,r0,th0,ph0)
+     end function GRF_R3_eval
+     real(dp) function GRF_R3_corr_eval(self,r,th,ph,r0,th0,ph0)
        use module_constants
-       import :: GRF_B3
-       class(GRF_B3), intent(inout) :: self
+       import :: GRF_R3
+       class(GRF_R3), intent(inout) :: self
        real(dp), intent(in) :: r,th,ph,r0,th0,ph0
-     end function GRF_B3_corr_eval
-     subroutine GRF_B3_coef(self,r,lmax,ulm)
+     end function GRF_R3_corr_eval
+     subroutine GRF_R3_coef(self,r,lmax,ulm)
        use module_constants
-       import :: GRF_B3
-       class(GRF_B3), intent(inout) :: self
+       import :: GRF_R3
+       class(GRF_R3), intent(inout) :: self
        real(dp), intent(in) :: r
        integer(i4b), intent(in) :: lmax
        complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
-     end subroutine GRF_B3_coef
-     subroutine GRF_B3_corr_coef(self,r,r0,th0,ph0,lmax,clm)
+     end subroutine GRF_R3_coef
+     subroutine GRF_R3_corr_coef(self,r,r0,th0,ph0,lmax,clm)
        use module_constants
-       import :: GRF_B3
-       class(GRF_B3), intent(inout) :: self
+       import :: GRF_R3
+       class(GRF_R3), intent(inout) :: self
        real(dp), intent(in) :: r,r0,th0,ph0
        integer(i4b), intent(in) :: lmax
        complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: clm
-     end subroutine GRF_B3_corr_coef
+     end subroutine GRF_R3_corr_coef
   end interface
 
 
-  type, extends(GRF_B3) :: GRF_B3_SEM
+  type, extends(GRF_R3) :: GRF_R3_SEM
      logical :: allocated = .false.
      logical :: corr_point_set = .false.
      integer(i4b) :: lmax
@@ -249,14 +249,14 @@ module module_random_fields
      type(interp_1D_cubic), dimension(:), allocatable :: ulm_r
      type(interp_1D_cubic), dimension(:), allocatable :: ulm_i
    contains
-     procedure :: delete    => delete_GRF_B3_SEM
-     procedure :: degree    => degree_GRF_B3_SEM
-     procedure :: realise   => realise_GRF_B3_SEM
-     procedure :: eval      => eval_GRF_B3_SEM
-     procedure :: corr_eval => corr_eval_GRF_B3_SEM
-!     procedure :: coef      => coef_GRF_B3_SEM
-!     procedure :: corr_coef => corr_coef_GRF_B3_SEM
-  end type GRF_B3_SEM
+     procedure :: delete    => delete_GRF_R3_SEM
+     procedure :: degree    => degree_GRF_R3_SEM
+     procedure :: realise   => realise_GRF_R3_SEM
+     procedure :: eval      => eval_GRF_R3_SEM
+     procedure :: corr_eval => corr_eval_GRF_R3_SEM
+!     procedure :: coef      => coef_GRF_R3_SEM
+!     procedure :: corr_coef => corr_coef_GRF_R3_SEM
+  end type GRF_R3_SEM
 
 contains
 
@@ -506,7 +506,7 @@ contains
     real(dp), intent(in), optional :: eps
 
     integer(i4b), parameter :: ngll = 5
-    integer(i4b), parameter :: npad = 10
+    integer(i4b), parameter :: npad = 0
     real(dp), parameter :: eps_default = 1.e-5_dp
 
     integer(i4b) :: inode,ispec,count,kda,ldab,kdb,ldbb, &
@@ -544,7 +544,7 @@ contains
     nspec = (x2-x1)/dx
     dx = (x2-x1)/nspec
     nspec = nspec + 2*npad
-    x11 = x1 - npad*dx
+    x11 = x1-npad*dx
     x22 = x2 + npad*dx
     ispec1 = 1 + npad
     ispec2 = nspec - npad
@@ -1057,8 +1057,8 @@ contains
   !====================================================!
 
 
-  subroutine delete_GRF_B3_SEM(self)
-    class(GRF_B3_SEM), intent(inout) :: self
+  subroutine delete_GRF_R3_SEM(self)
+    class(GRF_R3_SEM), intent(inout) :: self
     integer(i4b) :: l,m,ilm
     ilm = 0
     do l = 0,self%lmax
@@ -1072,17 +1072,17 @@ contains
     self%corr_point_set = .false.
     self%allocated = .false.
     return
-  end subroutine delete_GRF_B3_SEM
+  end subroutine delete_GRF_R3_SEM
 
-  integer(i4b) function degree_GRF_B3_SEM(self) result(lmax)
-    class(GRF_B3_SEM), intent(inout) :: self
+  integer(i4b) function degree_GRF_R3_SEM(self) result(lmax)
+    class(GRF_R3_SEM), intent(inout) :: self
     lmax = self%lmax
     return
-  end function degree_GRF_B3_SEM
+  end function degree_GRF_R3_SEM
 
 
-  subroutine realise_GRF_B3_SEM(self)
-    class(GRF_B3_SEM), intent(inout) :: self
+  subroutine realise_GRF_R3_SEM(self)
+    class(GRF_R3_SEM), intent(inout) :: self
     integer(i4b) :: l,m,ilm
     ilm = 0
     do l = 0,self%lmax
@@ -1099,11 +1099,11 @@ contains
        end do
     end do
     return
-  end subroutine realise_GRF_B3_SEM
+  end subroutine realise_GRF_R3_SEM
 
 
-  real(dp) function eval_GRF_B3_SEM(self,r,th,ph) result(u)
-    class(GRF_B3_SEM), intent(inout) :: self
+  real(dp) function eval_GRF_R3_SEM(self,r,th,ph) result(u)
+    class(GRF_R3_SEM), intent(inout) :: self
     real(dp), intent(in) :: r,th,ph
     integer(i4b) :: l,m,ilm
     real(dp) :: fac
@@ -1128,11 +1128,11 @@ contains
        end do
     end do            
     return
-  end function eval_GRF_B3_SEM
+  end function eval_GRF_R3_SEM
 
 
-  real(dp) function corr_eval_GRF_B3_SEM(self,r,th,ph,r0,th0,ph0) result(u)
-    class(GRF_B3_SEM), intent(inout) :: self
+  real(dp) function corr_eval_GRF_R3_SEM(self,r,th,ph,r0,th0,ph0) result(u)
+    class(GRF_R3_SEM), intent(inout) :: self
     real(dp), intent(in) :: r,th,ph,r0,th0,ph0
     integer(i4b) :: l
     real(dp) :: del,fac,kl
@@ -1148,10 +1148,10 @@ contains
        u = u + fac*kl*d%get(0,0)
     end do    
     return
-  end function corr_eval_GRF_B3_SEM
+  end function corr_eval_GRF_R3_SEM
 
-  subroutine coef_GRF_B3_SEM(self,r,lmax,ulm)
-    class(GRF_B3_SEM), intent(inout) :: self
+  subroutine coef_GRF_R3_SEM(self,r,lmax,ulm)
+    class(GRF_R3_SEM), intent(inout) :: self
     real(dp), intent(in) :: r
     integer(i4b), intent(in) :: lmax
     complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
@@ -1168,11 +1168,11 @@ contains
        end do
     end do
     return
-  end subroutine coef_GRF_B3_SEM
+  end subroutine coef_GRF_R3_SEM
 
 
-  subroutine corr_coef_GRF_B3_SEM(self,r,r0,th0,ph0,lmax,ulm)
-    class(GRF_B3_SEM), intent(inout) :: self
+  subroutine corr_coef_GRF_R3_SEM(self,r,r0,th0,ph0,lmax,ulm)
+    class(GRF_R3_SEM), intent(inout) :: self
     real(dp), intent(in) :: r,r0,th0,ph0
     integer(i4b), intent(in) :: lmax
     complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
@@ -1199,6 +1199,6 @@ contains
        end do
     end do
     return
-  end subroutine corr_coef_GRF_B3_SEM
+  end subroutine corr_coef_GRF_R3_SEM
   
 end module module_random_fields
