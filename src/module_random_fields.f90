@@ -17,30 +17,43 @@ module module_random_fields
   !===================================================!
   
   type, abstract :: GRF_1D
+     integer(i4b) :: ns = 0
      real(dp) :: a,b
    contains
      procedure(GRF_1D_delete),    deferred :: delete
-     procedure(GRF_1D_realise),   deferred :: realise
+     procedure(GRF_1D_sample),    deferred :: sample
+     procedure(GRF_1D_clear),     deferred :: clear
      procedure(GRF_1D_eval),      deferred :: eval
      procedure(GRF_1D_corr_eval), deferred :: corr_eval
-     procedure(GRF_1D_interp),    deferred :: interp
   end type GRF_1D
 
   abstract interface
+     
      subroutine GRF_1D_delete(self)
        import :: GRF_1D
        class(GRF_1D), intent(inout) :: self
      end subroutine GRF_1D_delete
-     subroutine GRF_1D_realise(self)
+     
+     subroutine GRF_1D_sample(self,ns)
+       use module_constants
        import :: GRF_1D
        class(GRF_1D), intent(inout) :: self
-     end subroutine GRF_1D_realise
-     real(dp) function GRF_1D_eval(self,x)
+       integer(i4b), intent(in) :: ns
+     end subroutine GRF_1D_sample
+     
+     subroutine GRF_1D_clear(self)
+       import :: GRF_1D
+       class(GRF_1D), intent(inout) :: self
+     end subroutine GRF_1D_clear
+     
+     real(dp) function GRF_1D_eval(self,x,is)
        use module_constants
        import :: GRF_1D       
        class(GRF_1D), intent(inout) :: self
        real(dp), intent(in) :: x
+       integer(i4b), intent(in) :: is
      end function GRF_1D_eval
+     
      real(dp) function GRF_1D_corr_eval(self,x,c)
        use module_constants
        import :: GRF_1D       
@@ -48,12 +61,7 @@ module module_random_fields
        real(dp), intent(in) :: x
        real(dp), intent(in) :: c
      end function GRF_1D_corr_eval
-     subroutine GRF_1D_interp(self,fun)
-       use module_interp
-       import :: GRF_1D
-       class(GRF_1D), intent(inout) :: self
-       type(interp_1D_cubic), intent(inout) :: fun
-     end subroutine GRF_1D_interp
+     
   end interface
 
   type, extends(GRF_1D) :: GRF_1D_SEM
@@ -65,14 +73,14 @@ module module_random_fields
      real(dp), dimension(:), allocatable :: Q
      real(dp), dimension(:), allocatable :: x
      real(dp), dimension(:,:), allocatable :: evec
-     type(interp_1D_cubic) :: fun
+     type(interp_1D_cubic), dimension(:), allocatable :: fun
      type(interp_1D_cubic) :: cfun
    contains
      procedure :: delete => delete_GRF_1D_SEM
-     procedure :: realise => realise_GRF_1D_SEM
+     procedure :: sample => sample_GRF_1D_SEM
+     procedure :: clear => clear_GRF_1D_SEM
      procedure :: eval => eval_GRF_1D_SEM
      procedure :: corr_eval => corr_eval_GRF_1D_SEM
-     procedure :: interp => interp_GRF_1D_SEM
   end type GRF_1D_SEM
 
   interface GRF_1D_SEM
@@ -88,14 +96,14 @@ module module_random_fields
      real(dp), dimension(:), allocatable :: x
      real(dp), dimension(:), allocatable :: Q
      type(C_PTR) :: plan_c2r
-     type(interp_1D_cubic) :: fun
+     type(interp_1D_cubic), dimension(:), allocatable :: fun
      type(interp_1D_cubic) :: cfun
    contains
      procedure :: delete => delete_GRF_1D_Fourier
-     procedure :: realise => realise_GRF_1D_Fourier
+     procedure :: sample => sample_GRF_1D_Fourier
+     procedure :: clear => clear_GRF_1D_Fourier
      procedure :: eval => eval_GRF_1D_Fourier
      procedure :: corr_eval => corr_eval_GRF_1D_Fourier
-     procedure :: interp => interp_GRF_1D_Fourier
   end type GRF_1D_Fourier
 
   interface GRF_1D_Fourier
@@ -108,10 +116,12 @@ module module_random_fields
   !===================================================!
   
   type, abstract :: GRF_S2
+     integer(i4b) :: ns = 0
    contains
      procedure(GRF_S2_delete),    deferred :: delete
      procedure(GRF_S2_degree),    deferred :: degree
-     procedure(GRF_S2_realise),   deferred :: realise
+     procedure(GRF_S2_sample),    deferred :: sample
+     procedure(GRF_S2_clear),     deferred :: clear
      procedure(GRF_S2_eval),      deferred :: eval
      procedure(GRF_S2_corr_eval), deferred :: corr_eval
      procedure(GRF_S2_coef),      deferred :: coef
@@ -119,38 +129,53 @@ module module_random_fields
   end type GRF_S2
 
   abstract interface
+
      subroutine GRF_S2_delete(self)
        import :: GRF_S2
        class(GRF_S2), intent(inout) :: self
      end subroutine GRF_S2_delete
+     
      integer(i4b) function GRF_S2_degree(self)
        use module_constants
        import :: GRF_S2
        class(GRF_S2), intent(inout) :: self
      end function GRF_S2_degree
-     subroutine GRF_S2_realise(self)
+     
+     subroutine GRF_S2_sample(self,ns)
+       use module_constants
        import :: GRF_S2       
        class(GRF_S2), intent(inout) :: self
-     end subroutine GRF_S2_realise
-     real(dp) function GRF_S2_eval(self,th,ph)
+       integer(i4b), intent(in) :: ns
+     end subroutine GRF_S2_sample
+     
+     subroutine GRF_S2_clear(self)
+       import :: GRF_S2       
+       class(GRF_S2), intent(inout) :: self
+     end subroutine GRF_S2_clear
+     
+     real(dp) function GRF_S2_eval(self,th,ph,is)
        use module_constants
        import :: GRF_S2
        class(GRF_S2), intent(inout) :: self
        real(dp), intent(in) :: th,ph
+       integer(i4b), intent(in) :: is
      end function GRF_S2_eval
+     
      real(dp) function GRF_S2_corr_eval(self,th,ph,th0,ph0)
        use module_constants
        import :: GRF_S2
        class(GRF_S2), intent(inout) :: self
        real(dp), intent(in) :: th,ph,th0,ph0
      end function GRF_S2_corr_eval
-     subroutine GRF_S2_coef(self,lmax,ulm)
+     
+     subroutine GRF_S2_coef(self,lmax,is,ulm)
        use module_constants
        import :: GRF_S2
        class(GRF_S2), intent(inout) :: self
-       integer(i4b), intent(in) :: lmax
-       complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
+       integer(i4b), intent(in) :: lmax,is
+       complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm       
      end subroutine GRF_S2_coef
+     
      subroutine GRF_S2_corr_coef(self,th0,ph0,lmax,clm)
        use module_constants
        import :: GRF_S2
@@ -159,17 +184,20 @@ module module_random_fields
        integer(i4b), intent(in) :: lmax
        complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: clm
      end subroutine GRF_S2_corr_coef
+     
   end interface
 
   type, extends(GRF_S2) :: GRF_S2_SH
      logical :: allocated = .false.
      integer(i4b) :: lmax
+     integer(i4b) :: ncoef
      real(dp), dimension(:), allocatable :: Q
-     complex(dpc), dimension(:), allocatable :: ulm
+     complex(dpc), dimension(:,:), allocatable :: ulm
    contains
      procedure :: delete    => delete_GRF_S2_SH
      procedure :: degree    => degree_GRF_S2_SH
-     procedure :: realise   => realise_GRF_S2_SH
+     procedure :: sample    => sample_GRF_S2_SH
+     procedure :: clear     => clear_GRF_S2_SH
      procedure :: eval      => eval_GRF_S2_SH
      procedure :: corr_eval => corr_eval_GRF_S2_SH
      procedure :: coef      => coef_GRF_S2_SH
@@ -181,82 +209,94 @@ module module_random_fields
   !  types for random fields on a spherical annulus   !
   !===================================================!
 
-
-  type, abstract :: GRF_R3
+  type, abstract :: GRF_B3
      real(dp) :: a,b
    contains
-     procedure(GRF_R3_delete),    deferred :: delete
-     procedure(GRF_R3_degree),    deferred :: degree
-     procedure(GRF_R3_realise),   deferred :: realise
-     procedure(GRF_R3_eval),      deferred :: eval
-     procedure(GRF_R3_corr_eval), deferred :: corr_eval
-!     procedure(GRF_R3_coef),      deferred :: coef
-!     procedure(GRF_R3_corr_coef), deferred :: corr_coef
-  end type GRF_R3
-  
+     procedure(GRF_B3_delete),    deferred :: delete
+!     procedure(GRF_B3_degree),    deferred :: degree
+!     procedure(GRF_B3_sample),    deferred :: sample
+!     procedure(GRF_B3_clear),     deferred :: clear
+!     procedure(GRF_B3_eval),      deferred :: eval
+!     procedure(GRF_B3_corr_eval), deferred :: corr_eval
+!     procedure(GRF_B3_coef),      deferred :: coef
+!     procedure(GRF_B3_corr_coef), deferred :: corr_coef
+  end type GRF_B3
   
   abstract interface
-     subroutine GRF_R3_delete(self)
-       import :: GRF_R3
-       class(GRF_R3), intent(inout) :: self
-     end subroutine GRF_R3_delete
-     integer(i4b) function GRF_R3_degree(self)
+     
+     subroutine GRF_B3_delete(self)
+       import :: GRF_B3
+       class(GRF_B3), intent(inout) :: self
+     end subroutine GRF_B3_delete
+     
+     integer(i4b) function GRF_B3_degree(self)
        use module_constants
-       import :: GRF_R3
-       class(GRF_R3), intent(inout) :: self
-     end function GRF_R3_degree
-     subroutine GRF_R3_realise(self)
-       import :: GRF_R3       
-       class(GRF_R3), intent(inout) :: self
-     end subroutine GRF_R3_realise
-     real(dp) function GRF_R3_eval(self,r,th,ph)
+       import :: GRF_B3
+       class(GRF_B3), intent(inout) :: self
+     end function GRF_B3_degree
+     
+     subroutine GRF_B3_sample(self,ns)
        use module_constants
-       import :: GRF_R3
-       class(GRF_R3), intent(inout) :: self
+       import :: GRF_B3       
+       class(GRF_B3), intent(inout) :: self
+       integer(i4b), intent(in) :: ns
+     end subroutine GRF_B3_sample
+     
+     subroutine GRF_B3_clear(self)
+       import :: GRF_B3       
+       class(GRF_B3), intent(inout) :: self
+     end subroutine GRF_B3_clear
+     
+     real(dp) function GRF_B3_eval(self,r,th,ph,is)
+       use module_constants
+       import :: GRF_B3
+       class(GRF_B3), intent(inout) :: self
        real(dp), intent(in) :: r,th,ph
-     end function GRF_R3_eval
-     real(dp) function GRF_R3_corr_eval(self,r,th,ph,r0,th0,ph0)
+       integer(i4b), intent(in) :: is
+     end function GRF_B3_eval
+     
+     real(dp) function GRF_B3_corr_eval(self,r,th,ph,r0,th0,ph0)
        use module_constants
-       import :: GRF_R3
-       class(GRF_R3), intent(inout) :: self
+       import :: GRF_B3
+       class(GRF_B3), intent(inout) :: self
        real(dp), intent(in) :: r,th,ph,r0,th0,ph0
-     end function GRF_R3_corr_eval
-     subroutine GRF_R3_coef(self,r,lmax,ulm)
+     end function GRF_B3_corr_eval
+     
+     subroutine GRF_B3_coef(self,r,lmax,is,ulm)
        use module_constants
-       import :: GRF_R3
-       class(GRF_R3), intent(inout) :: self
+       import :: GRF_B3
+       class(GRF_B3), intent(inout) :: self
        real(dp), intent(in) :: r
-       integer(i4b), intent(in) :: lmax
+       integer(i4b), intent(in) :: lmax,is
        complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
-     end subroutine GRF_R3_coef
-     subroutine GRF_R3_corr_coef(self,r,r0,th0,ph0,lmax,clm)
+     end subroutine GRF_B3_coef
+     
+     subroutine GRF_B3_corr_coef(self,r,r0,th0,ph0,lmax,clm)
        use module_constants
-       import :: GRF_R3
-       class(GRF_R3), intent(inout) :: self
+       import :: GRF_B3
+       class(GRF_B3), intent(inout) :: self
        real(dp), intent(in) :: r,r0,th0,ph0
        integer(i4b), intent(in) :: lmax
        complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: clm
-     end subroutine GRF_R3_corr_coef
+     end subroutine GRF_B3_corr_coef
+     
   end interface
 
-
-  type, extends(GRF_R3) :: GRF_R3_SEM
+  type, extends(GRF_B3) :: GRF_B3_SEM
      logical :: allocated = .false.
      logical :: corr_point_set = .false.
      integer(i4b) :: lmax
      real(dp) :: r0,th0,ph0
      class(GRF_1D), dimension(:), allocatable :: fun_l
-     type(interp_1D_cubic), dimension(:), allocatable :: ulm_r
-     type(interp_1D_cubic), dimension(:), allocatable :: ulm_i
    contains
-     procedure :: delete    => delete_GRF_R3_SEM
-     procedure :: degree    => degree_GRF_R3_SEM
-     procedure :: realise   => realise_GRF_R3_SEM
-     procedure :: eval      => eval_GRF_R3_SEM
-     procedure :: corr_eval => corr_eval_GRF_R3_SEM
-!     procedure :: coef      => coef_GRF_R3_SEM
-!     procedure :: corr_coef => corr_coef_GRF_R3_SEM
-  end type GRF_R3_SEM
+     procedure :: delete    => delete_GRF_B3_SEM
+!     procedure :: degree    => degree_GRF_B3_SEM
+!     procedure :: sample   => sample_GRF_B3_SEM
+!     procedure :: eval      => eval_GRF_B3_SEM
+!     procedure :: corr_eval => corr_eval_GRF_B3_SEM
+!     procedure :: coef      => coef_GRF_B3_SEM
+!     procedure :: corr_coef => corr_coef_GRF_B3_SEM
+  end type GRF_B3_SEM
 
 contains
 
@@ -271,7 +311,7 @@ contains
     deallocate(self%Q,   & 
                self%x,    &          
                self%evec)
-    call self%fun%delete()
+    call self%clear()    
     call self%cfun%delete()
     self%corr_point_set = .false.
     self%allocated = .false.
@@ -279,26 +319,49 @@ contains
   end subroutine delete_GRF_1D_SEM
 
 
-  subroutine realise_GRF_1D_SEM(self)
+  subroutine sample_GRF_1D_SEM(self,ns)
     class(GRF_1D_SEM), intent(inout) :: self
-    integer(i4b) :: i
+    integer(i4b), intent(in) :: ns
+    integer(i4b) :: i,is
     real(dp), dimension(self%ndim) :: un
     real(dp), dimension(self%mdim) :: u
+    call check(ns > 0,'sample_GRF_1D_SEM','sample size must be positive')
+    if(self%ns /= ns) then
+       call self%clear()
+       allocate(self%fun(ns))
+       self%ns = ns
+    end if
     call random_seed()
-    call normal_random_variable(un)
-    un = un*sqrt(self%Q)
-    u = 0.0_dp
-    do i = 1,self%ndim
-      u(:) = u(:) + un(i)*self%evec(:,i)
+    do is = 1,self%ns
+       call normal_random_variable(un)
+       un = un*sqrt(self%Q)
+       u = 0.0_dp
+       do i = 1,self%ndim
+          u(:) = u(:) + un(i)*self%evec(:,i)
+       end do
+       call self%fun(is)%set(self%x,u)
     end do
-    call self%fun%set(self%x,u)
     return
-  end subroutine realise_GRF_1D_SEM
+  end subroutine sample_GRF_1D_SEM
 
-  real(dp) function eval_GRF_1D_SEM(self,x) result(f)
+
+  subroutine clear_GRF_1D_SEM(self)
+    class(GRF_1D_SEM), intent(inout) :: self
+    integer(i4b) :: is 
+    if(self%ns == 0) return
+    do is = 1,self%ns
+       call self%fun(is)%delete()
+    end do
+    deallocate(self%fun)
+    self%ns = 0
+    return
+  end subroutine clear_GRF_1D_SEM
+  
+  real(dp) function eval_GRF_1D_SEM(self,x,is) result(f)
     class(GRF_1D_SEM), intent(inout) :: self
     real(dp), intent(in) :: x
-    f = self%fun%f(x)
+    integer(i4b), intent(in) :: is
+    f = self%fun(is)%f(x)
     return
   end function eval_GRF_1D_SEM
 
@@ -327,25 +390,13 @@ contains
     return
   end function corr_eval_GRF_1D_SEM
 
-  subroutine interp_GRF_1D_SEM(self,fun)
-    class(GRF_1D_SEM), intent(inout) :: self
-    type(interp_1D_cubic), intent(inout) :: fun
-    fun = self%fun
-    return
-  end subroutine interp_GRF_1D_SEM
 
 
-  subroutine corr_interp_GRF_1D_SEM(self,cfun)
-    class(GRF_1D_SEM), intent(inout) :: self
-    type(interp_1D_cubic), intent(inout) :: cfun
-    cfun = self%cfun
-    return
-  end subroutine corr_interp_GRF_1D_SEM
 
   
   type(GRF_1D_SEM) function build_GRF_1D_SEM(x1,x2,lam,s,sig,eps) &
                             result(fun)
-    
+   
     real(dp), intent(in) :: x1,x2,lam,s,sig
     real(dp), intent(in), optional :: eps
 
@@ -392,8 +443,8 @@ contains
     x22 = x2 + npad*dx
     ispec1 = 1 + npad
     ispec2 = nspec - npad
-    
-    ! allocate the mesh arrays
+   
+   ! allocate the mesh arrays
     allocate(hp(ngll,ngll))
     allocate(jac(nspec))
     allocate(xx(ngll,nspec))
@@ -466,7 +517,7 @@ contains
     i1 = ibool(1,ispec1)
     i2 = ibool(ngll,ispec2)
     fun%mdim = i2-i1+1
-    
+   
     allocate(fun%evec(fun%mdim,fun%ndim),fun%x(fun%mdim))
     do i = 1,fun%ndim
        fun%evec(:,i) = evec(i1:i2,i)       
@@ -504,7 +555,6 @@ contains
     integer(i4b), intent(in) :: l
     real(dp), intent(in) :: x1,x2,lam,s,sig
     real(dp), intent(in), optional :: eps
-
     integer(i4b), parameter :: ngll = 5
     integer(i4b), parameter :: npad = 0
     real(dp), parameter :: eps_default = 1.e-5_dp
@@ -517,20 +567,18 @@ contains
     real(dp), dimension(:), allocatable :: eval,work,jac
     real(dp), dimension(:,:), allocatable :: aa,bb,evec,hp,xx
     type(gauss_lobatto_quadrature) :: quad
-
         
     if(present(eps)) then
        eps_loc = eps
     else
        eps_loc = eps_default
-    end if
-
-    fun%a = x1
-    fun%b = x2
-    
+   end if
+   fun%a = x1
+   fun%b = x2
+   
     ! estimate the cutoff eigenvalue
     nmax = 0
-    sum = 0.0_dp
+   sum = 0.0_dp
     do       
        fac = 1.0_dp + (lam*pi*nmax/(x2-x1))**2
        fac = fac**(-s)
@@ -548,13 +596,12 @@ contains
     x22 = x2 + npad*dx
     ispec1 = 1 + npad
     ispec2 = nspec - npad
-    
+   
     ! allocate the mesh arrays
     allocate(hp(ngll,ngll))
     allocate(jac(nspec))
     allocate(xx(ngll,nspec))
     allocate(ibool(ngll,nspec))
-
     
     ! get the gll points and weights  
     call quad%set(ngll)
@@ -673,7 +720,7 @@ contains
     if(.not.self%allocated) return
     deallocate(self%Q)
     call fftw_destroy_plan(self%plan_c2r)
-    call self%fun%delete()
+    call self%clear()
     call self%cfun%delete()
     self%corr_point_set = .false.
     self%allocated = .false.
@@ -681,39 +728,63 @@ contains
   end subroutine delete_GRF_1D_Fourier
 
 
-  subroutine realise_GRF_1D_Fourier(self)
+  subroutine sample_GRF_1D_Fourier(self,ns)
     class(GRF_1D_Fourier), intent(inout) :: self
-    integer(i4b) :: i,n,i1,i2
+    integer(i4b), intent(in) :: ns
+    integer(i4b) :: i,n,i1,i2,is
     real(dp) :: r1,r2
     real(C_DOUBLE), pointer :: out(:)
     complex(C_DOUBLE_COMPLEX), pointer :: in(:)
     type(C_PTR) :: pin,pout
+    call check(ns > 0,'sample_GRF_1D_Fourier','sample size must be positive')
+    if(self%ns /= ns) then
+       call self%clear()
+       allocate(self%fun(ns))
+       self%ns = ns
+    end if    
     n = self%n
     i1 = self%i1
     i2 = self%i2
     pin = fftw_alloc_complex(int(n/2+1, C_SIZE_T))
     pout  = fftw_alloc_real(int(n, C_SIZE_T))
     call c_f_pointer(pin, in, [n/2+1])
-    call c_f_pointer(pout,   out, [n])
+    call c_f_pointer(pout,   out, [n])    
     call random_seed()
-    call normal_random_variable(r1)
-    in(1) = r1*sqrt(self%Q(1))
-    do i = 2,n/2+1
-       call normal_random_variable(r1,r2)
-       in(i) = (r1+ii*r2)*sqrt(self%Q(i))
+    do is = 1,self%ns
+       call normal_random_variable(r1)
+       in(1) = r1*sqrt(self%Q(1))
+       do i = 2,n/2+1
+          call normal_random_variable(r1,r2)
+          in(i) = (r1+ii*r2)*sqrt(self%Q(i))
+       end do
+       call fftw_execute_dft_c2r(self%plan_c2r,in,out)
+       call self%fun(is)%set(self%x(i1:i2),out(i1:i2))
     end do
-    call fftw_execute_dft_c2r(self%plan_c2r,in,out)
-    call self%fun%set(self%x(i1:i2),out(i1:i2))    
     return
-  end subroutine realise_GRF_1D_Fourier
+  end subroutine sample_GRF_1D_Fourier
 
-  real(dp) function eval_GRF_1D_Fourier(self,x) result(f)
+  real(dp) function eval_GRF_1D_Fourier(self,x,is) result(f)
     class(GRF_1D_Fourier), intent(inout) :: self
     real(dp), intent(in) :: x
-    f = self%fun%f(x)
+    integer(i4b), intent(in) :: is
+    f = self%fun(is)%f(x)
     return
   end function eval_GRF_1D_Fourier  
 
+
+  subroutine clear_GRF_1D_Fourier(self)
+    class(GRF_1D_Fourier), intent(inout) :: self
+    integer(i4b) :: is 
+    if(self%ns == 0) return
+    do is = 1,self%ns
+       call self%fun(is)%delete()
+    end do
+    deallocate(self%fun)
+    self%ns = 0
+    return
+  end subroutine clear_GRF_1D_Fourier
+
+  
   real(dp) function corr_eval_GRF_1D_Fourier(self,x,c) result(f)
     class(GRF_1D_Fourier), intent(inout) :: self
     real(dp), intent(in) :: x,c
@@ -748,23 +819,6 @@ contains
     return
   end function  corr_eval_GRF_1D_Fourier
   
-
-
-  subroutine interp_GRF_1D_Fourier(self,fun)
-    class(GRF_1D_Fourier), intent(inout) :: self
-    type(interp_1D_cubic), intent(inout) :: fun
-    fun = self%fun
-    return
-  end subroutine interp_GRF_1D_Fourier
-
-
-  subroutine corr_interp_GRF_1D_Fourier(self,cfun)
-    class(GRF_1D_Fourier), intent(inout) :: self
-    type(interp_1D_cubic), intent(inout) :: cfun
-    cfun = self%cfun
-    return
-  end subroutine corr_interp_GRF_1D_Fourier
-
   
   type(GRF_1D_Fourier) function build_GRF_1D_Fourier(x1,x2,lam,s, &
                                                     sig,eps,fftw_flag) result(fun)
@@ -782,7 +836,6 @@ contains
     complex(C_DOUBLE_COMPLEX), pointer :: in(:)
     type(C_PTR) :: pin,pout,plan
     integer(C_INT) :: plan_flag
-
     if(present(eps)) then
        eps_loc = eps
     else
@@ -830,7 +883,7 @@ contains
     do i = 1,n
        fun%x(i) = x11 + (i-1)*dx
     end do
-
+    
     ! set the covariance
     allocate(fun%Q(n/2+1))
     sum = 0.0_dp
@@ -847,7 +900,7 @@ contains
     fun%Q = sig*sig*fun%Q/sum
 
     ! set up fft plan
-    pin = fftw_alloc_complex(int(n/2+1, C_SIZE_T))
+   pin = fftw_alloc_complex(int(n/2+1, C_SIZE_T))
     pout  = fftw_alloc_real(int(n, C_SIZE_T))
     call c_f_pointer(pin,   in, [n/2+1])
     call c_f_pointer(pout, out, [n])
@@ -856,7 +909,6 @@ contains
     call fftw_free(pout)
     fun%plan_c2r = plan
     
-
     return
   end function build_GRF_1D_Fourier
   
@@ -869,7 +921,7 @@ contains
     class(GRF_S2_SH), intent(inout) :: self
     if(.not.self%allocated) return
     deallocate(self%Q)
-    deallocate(self%ulm)
+    call self%clear()
     self%allocated = .false.
     return
   end subroutine delete_GRF_S2_SH
@@ -881,31 +933,49 @@ contains
     return
   end function degree_GRF_S2_SH
   
-  subroutine realise_GRF_S2_SH(self)
+  subroutine sample_GRF_S2_SH(self,ns)
     class(GRF_S2_SH), intent(inout) :: self
-    integer(i4b) :: l,m,ilm
+    integer(i4b), intent(in) :: ns
+    integer(i4b) :: l,m,ilm,is
     real(dp) :: r1,r2,std
-    self%ulm = 0.0_dp
-    ilm = 0
+    if(self%ns /= ns) then
+       call self%clear()
+       allocate(self%ulm(self%ncoef,ns))
+       self%ns = ns
+    end if
     call random_seed()
-    do l = 0,self%lmax
-       std = sqrt(self%Q(l))
-       call normal_random_variable(r1)
-       ilm = ilm + 1
-       self%ulm(ilm) =  std*r1       
-       do m = 1,l
-          call normal_random_variable(r1,r2)
-          ilm = ilm+1
-          self%ulm(ilm) =  std*(r1+ii*r2)
+    do is = 1,self%ns
+       self%ulm(:,is) = 0.0_dp
+       ilm = 0
+       do l = 0,self%lmax
+          std = sqrt(self%Q(l))
+          call normal_random_variable(r1)
+          ilm = ilm + 1
+          self%ulm(ilm,is) =  std*r1       
+          do m = 1,l
+             call normal_random_variable(r1,r2)
+             ilm = ilm+1
+             self%ulm(ilm,is) =  std*(r1+ii*r2)
+          end do
        end do
+       self%ulm(ilm,is) = 0.0_dp
     end do
-    self%ulm(ilm) = 0.0_dp
     return
-  end subroutine realise_GRF_S2_SH
+  end subroutine sample_GRF_S2_SH
 
-  real(dp) function eval_GRF_S2_SH(self,th,ph) result(u)
+
+  subroutine clear_GRF_S2_SH(self)
+    class(GRF_S2_SH), intent(inout) :: self
+    if(self%ns == 0) return
+    deallocate(self%ulm)
+    self%ns = 0
+    return
+  end subroutine clear_GRF_S2_SH
+  
+  real(dp) function eval_GRF_S2_SH(self,th,ph,is) result(u)
     class(GRF_S2_SH), intent(inout) :: self
     real(dp), intent(in) :: th,ph
+    integer(i4b), intent(in) :: is
     integer(i4b) :: l,m,ilm
     real(dp) :: fac
     complex(dpc) :: ep,fp
@@ -918,12 +988,12 @@ contains
        fac = sqrt((2*l+1)/fourpi)
        call d%next()
        ilm = ilm+1
-       u  = u +  real(self%ulm(ilm)*fac*d%get(0,0),kind=dp)
+       u  = u +  real(self%ulm(ilm,is)*fac*d%get(0,0),kind=dp)
        fp = 1.0_dp
        do m = 1,l
           fp = fp*ep
           ilm = ilm+1
-          u = u + 2.0_dp*real(self%ulm(ilm)*fac*d%get(0,m)*fp,kind=dp)          
+          u = u + 2.0_dp*real(self%ulm(ilm,is)*fac*d%get(0,m)*fp,kind=dp)          
        end do
     end do        
     return
@@ -949,18 +1019,18 @@ contains
   end function corr_eval_GRF_S2_SH
 
   
-  subroutine coef_GRF_S2_SH(self,lmax,ulm)
+  subroutine coef_GRF_S2_SH(self,lmax,is,ulm)
     class(GRF_S2_SH), intent(inout) :: self
-    integer(i4b), intent(in) :: lmax
+    integer(i4b), intent(in) :: lmax,is
     complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
     integer(i4b) :: l,m,ilm
     ulm = 0.0_dp
     do l = 0,min(lmax,self%lmax)
        ilm = ilm + 1
-       ulm(ilm) = self%ulm(ilm)
+       ulm(ilm) = self%ulm(ilm,is)
        do m = 1,l
           ilm = ilm+1
-          ulm(ilm) = self%ulm(ilm)
+          ulm(ilm) = self%ulm(ilm,is)
        end do
     end do
     return
@@ -1030,11 +1100,8 @@ contains
        l2 = 2*l2
     end do
     fun%lmax = l2
+    fun%ncoef = (l2+1)*(l2+2)/2
 
-
-    ! allocate the coefficient array
-    ncoef = (fun%lmax+1)*(fun%lmax+2)/2
-    allocate(fun%ulm(ncoef))
     
     ! set the covariance
     allocate(fun%Q(0:fun%lmax))
@@ -1048,7 +1115,7 @@ contains
     if(present(asph)) then
        if(asph) fun%Q(0) = 0.0_dp
     end if
-    
+   
     return
   end function build_GRF_S2_SH
 
@@ -1057,148 +1124,143 @@ contains
   !====================================================!
 
 
-  subroutine delete_GRF_R3_SEM(self)
-    class(GRF_R3_SEM), intent(inout) :: self
+  subroutine delete_GRF_B3_SEM(self)
+    class(GRF_B3_SEM), intent(inout) :: self
     integer(i4b) :: l,m,ilm
     ilm = 0
     do l = 0,self%lmax
          call self%fun_l(l)%delete()
-       do m = 0,l
-          ilm = ilm+1
-          call self%ulm_r(ilm)%delete()
-          call self%ulm_i(ilm)%delete()
-       end do
     end do
     self%corr_point_set = .false.
     self%allocated = .false.
     return
-  end subroutine delete_GRF_R3_SEM
+  end subroutine delete_GRF_B3_SEM
 
-  integer(i4b) function degree_GRF_R3_SEM(self) result(lmax)
-    class(GRF_R3_SEM), intent(inout) :: self
+  integer(i4b) function degree_GRF_B3_SEM(self) result(lmax)
+    class(GRF_B3_SEM), intent(inout) :: self
     lmax = self%lmax
     return
-  end function degree_GRF_R3_SEM
+  end function degree_GRF_B3_SEM
 
 
-  subroutine realise_GRF_R3_SEM(self)
-    class(GRF_R3_SEM), intent(inout) :: self
-    integer(i4b) :: l,m,ilm
-    ilm = 0
-    do l = 0,self%lmax
-       ilm = ilm+1
-       call self%fun_l(l)%realise()
-       call self%fun_l(l)%interp(self%ulm_r(ilm))
-       do m = 1,l
-          ilm = ilm+1
-          call self%fun_l(l)%realise()
-          call self%fun_l(l)%interp(self%ulm_r(ilm))
-          ilm = ilm+1
-          call self%fun_l(l)%realise()
-          call self%fun_l(l)%interp(self%ulm_i(ilm))
-       end do
-    end do
-    return
-  end subroutine realise_GRF_R3_SEM
+!  subroutine sample_GRF_B3_SEM(self)
+!    class(GRF_B3_SEM), intent(inout) :: self
+!    integer(i4b) :: l,m,ilm
+!    ilm = 0
+!    do l = 0,self%lmax
+!       ilm = ilm+1
+!       call self%fun_l(l)%sample()
+!       call self%fun_l(l)%interp(self%ulm_r(ilm))
+!       do m = 1,l
+!          ilm = ilm+1
+!          call self%fun_l(l)%sample()
+!          call self%fun_l(l)%interp(self%ulm_r(ilm))
+!          ilm = ilm+1
+!          call self%fun_l(l)%sample()
+!          call self%fun_l(l)%interp(self%ulm_i(ilm))
+!       end do
+!    end do
+!    return
+!  end subroutine sample_GRF_B3_SEM
 
 
-  real(dp) function eval_GRF_R3_SEM(self,r,th,ph) result(u)
-    class(GRF_R3_SEM), intent(inout) :: self
-    real(dp), intent(in) :: r,th,ph
-    integer(i4b) :: l,m,ilm
-    real(dp) :: fac
-    complex(dpc) :: ep,fp,ulm
-    type(wigner_value) :: d
-    u = 0.0_dp
-    ilm = 0
-    ep = exp(ii*ph)
-    call d%init(th,0,self%lmax)
-    do l = 0,self%lmax
-       fac = sqrt((2*l+1)/fourpi)
-       call d%next()
-       ilm = ilm+1
-       ulm = self%ulm_r(ilm)%f(r)
-       u  = u +  real(ulm*fac*d%get(0,0),kind=dp)
-       fp = 1.0_dp
-       do m = 1,l
-          fp = fp*ep
-          ilm = ilm+1
-          ulm = self%ulm_r(ilm)%f(r) + ii*self%ulm_i(ilm)%f(r)
-          u = u + 2.0_dp*real(ulm*fac*d%get(0,m)*fp,kind=dp)          
-       end do
-    end do            
-    return
-  end function eval_GRF_R3_SEM
+!  real(dp) function eval_GRF_B3_SEM(self,r,th,ph) result(u)
+!    class(GRF_B3_SEM), intent(inout) :: self
+!    real(dp), intent(in) :: r,th,ph
+!    integer(i4b) :: l,m,ilm
+!    real(dp) :: fac
+!    complex(dpc) :: ep,fp,ulm
+!    type(wigner_value) :: d
+!    u = 0.0_dp
+!    ilm = 0
+!    ep = exp(ii*ph)
+!    call d%init(th,0,self%lmax)
+!    do l = 0,self%lmax
+!       fac = sqrt((2*l+1)/fourpi)
+!       call d%next()
+!       ilm = ilm+1
+!       ulm = self%ulm_r(ilm)%f(r)
+!       u  = u +  real(ulm*fac*d%get(0,0),kind=dp)
+!       fp = 1.0_dp
+!       do m = 1,l
+!          fp = fp*ep
+!          ilm = ilm+1
+!          ulm = self%ulm_r(ilm)%f(r) + ii*self%ulm_i(ilm)%f(r)
+!          u = u + 2.0_dp*real(ulm*fac*d%get(0,m)*fp,kind=dp)          
+!       end do
+!    end do            
+!    return
+!  end function eval_GRF_B3_SEM
 
 
-  real(dp) function corr_eval_GRF_R3_SEM(self,r,th,ph,r0,th0,ph0) result(u)
-    class(GRF_R3_SEM), intent(inout) :: self
-    real(dp), intent(in) :: r,th,ph,r0,th0,ph0
-    integer(i4b) :: l
-    real(dp) :: del,fac,kl
-    type(wigner_value) :: d
-    del =  sin(th)*sin(th0)*cos(ph-ph0) + cos(th)*cos(th0) 
-    del = acos(del)
-    u = 0.0_dp
-    call d%init(del,0,0)
-    do l = 0,self%lmax
-       fac = (2*l+1)/fourpi
-       call d%next()
-       kl = self%fun_l(l)%corr_eval(r,r0)
-       u = u + fac*kl*d%get(0,0)
-    end do    
-    return
-  end function corr_eval_GRF_R3_SEM
+!  real(dp) function corr_eval_GRF_B3_SEM(self,r,th,ph,r0,th0,ph0) result(u)
+!    class(GRF_B3_SEM), intent(inout) :: self
+!    real(dp), intent(in) :: r,th,ph,r0,th0,ph0
+!    integer(i4b) :: l
+!    real(dp) :: del,fac,kl
+!    type(wigner_value) :: d
+!    del =  sin(th)*sin(th0)*cos(ph-ph0) + cos(th)*cos(th0) 
+!    del = acos(del)
+!    u = 0.0_dp
+!    call d%init(del,0,0)
+!    do l = 0,self%lmax
+!       fac = (2*l+1)/fourpi
+!       call d%next()
+!       kl = self%fun_l(l)%corr_eval(r,r0)
+!       u = u + fac*kl*d%get(0,0)
+!    end do    
+!    return
+!  end function corr_eval_GRF_B3_SEM
 
-  subroutine coef_GRF_R3_SEM(self,r,lmax,ulm)
-    class(GRF_R3_SEM), intent(inout) :: self
-    real(dp), intent(in) :: r
-    integer(i4b), intent(in) :: lmax
-    complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
-    integer(i4b) :: l,m,ilm,ll
-    ll = min(lmax,self%lmax)
-    ulm = 0.0_dp
-    ilm = 0
-    do l = 0,ll
-       ilm = ilm+1
-       ulm(ilm) =  self%ulm_r(ilm)%f(r)
-       do m = 1,l
-          ilm = ilm + 1
-          ulm(ilm) =  self%ulm_r(ilm)%f(r) + ii*self%ulm_i(ilm)%f(r)
-       end do
-    end do
-    return
-  end subroutine coef_GRF_R3_SEM
+!  subroutine coef_GRF_B3_SEM(self,r,lmax,ulm)
+!    class(GRF_B3_SEM), intent(inout) :: self
+!    real(dp), intent(in) :: r
+!    integer(i4b), intent(in) :: lmax
+!    complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
+!    integer(i4b) :: l,m,ilm,ll
+!    ll = min(lmax,self%lmax)
+!    ulm = 0.0_dp
+!    ilm = 0
+!    do l = 0,ll
+!       ilm = ilm+1
+!       ulm(ilm) =  self%ulm_r(ilm)%f(r)
+!       do m = 1,l
+!          ilm = ilm + 1
+!          ulm(ilm) =  self%ulm_r(ilm)%f(r) + ii*self%ulm_i(ilm)%f(r)
+!       end do
+!    end do
+!    return
+!  end subroutine coef_GRF_B3_SEM
 
 
-  subroutine corr_coef_GRF_R3_SEM(self,r,r0,th0,ph0,lmax,ulm)
-    class(GRF_R3_SEM), intent(inout) :: self
-    real(dp), intent(in) :: r,r0,th0,ph0
-    integer(i4b), intent(in) :: lmax
-    complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
-    integer(i4b) :: l,m,ilm,ll
-    real(dp) :: kl,fac
-    complex(dpc) :: ep,fp
-    type(wigner_value) :: d
-    ll = min(lmax,self%lmax)
-    ulm = 0.0_dp
-    ilm = 0
-    call d%init(th0,0,ll)
-    ep = exp(-ii*ph0)
-    do l = 0,ll
-       ilm = ilm+1
-       fac = sqrt((2*l+1)/fourpi)
-       kl = self%fun_l(l)%corr_eval(r,r0)
-       call d%next()
-       ulm(ilm) = kl*fac*d%get(0,0)
-       fp = 1.0_dp
-       do m = 1,l
-          ilm = ilm + 1
-          fp = fp*ep
-          ulm(ilm) = kl*fac*d%get(0,m)*fp
-       end do
-    end do
-    return
-  end subroutine corr_coef_GRF_R3_SEM
+!  subroutine corr_coef_GRF_B3_SEM(self,r,r0,th0,ph0,lmax,ulm)
+!    class(GRF_B3_SEM), intent(inout) :: self
+!    real(dp), intent(in) :: r,r0,th0,ph0
+!    integer(i4b), intent(in) :: lmax
+!    complex(dpc), dimension((lmax+1)*(lmax+2)/2), intent(out) :: ulm
+!    integer(i4b) :: l,m,ilm,ll
+!    real(dp) :: kl,fac
+!    complex(dpc) :: ep,fp
+!    type(wigner_value) :: d
+!    ll = min(lmax,self%lmax)
+!    ulm = 0.0_dp
+!    ilm = 0
+!    call d%init(th0,0,ll)
+!    ep = exp(-ii*ph0)
+!    do l = 0,ll
+!       ilm = ilm+1
+!       fac = sqrt((2*l+1)/fourpi)
+!       kl = self%fun_l(l)%corr_eval(r,r0)
+!       call d%next()
+!       ulm(ilm) = kl*fac*d%get(0,0)
+!       fp = 1.0_dp
+!       do m = 1,l
+!          ilm = ilm + 1
+!          fp = fp*ep
+!          ulm(ilm) = kl*fac*d%get(0,m)*fp
+!       end do
+!    end do
+!    return
+!  end subroutine corr_coef_GRF_B3_SEM
   
 end module module_random_fields
