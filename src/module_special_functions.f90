@@ -14,7 +14,7 @@ module module_special_functions
      real(dp), dimension(:), allocatable :: v
      real(dp), dimension(:), allocatable :: vp1
    contains
-     procedure :: delete => delete_legendre_value
+     procedure :: deallocate => deallocate_legendre_value
      procedure :: allocate => allocate_legendre_value
      procedure :: init => initialise_legendre_value
      procedure :: next => next_legendre_value
@@ -23,7 +23,7 @@ module module_special_functions
      generic   :: get => get_single_legendre_value, &
                          get_slice_legendre_value     
   end type legendre_value
-  private :: delete_legendre_value,     &
+  private :: deallocate_legendre_value,     &
              allocate_legendre_value,   &
              initialise_legendre_value, &
              next_legendre_value,       &
@@ -43,7 +43,7 @@ module module_special_functions
      real(dp), dimension(:), allocatable :: v
      real(dp), dimension(:), allocatable :: vp1
    contains
-     procedure :: delete => delete_wigner_value
+     procedure :: deallocate => deallocate_wigner_value
      procedure :: allocate => allocate_wigner_value
      procedure :: index => index_wigner_value
      procedure :: init => initialise_wigner_value
@@ -53,7 +53,7 @@ module module_special_functions
      generic   :: get => get_single_wigner_value, &
                          get_slice_wigner_value
   end type wigner_value
-  private :: delete_wigner_value,     &
+  private :: deallocate_wigner_value,     &
              allocate_wigner_value,   &
              initialise_wigner_value, &
              next_wigner_value,       &
@@ -72,7 +72,7 @@ contains
   !============================================================================!
   !============================================================================!
   
-  subroutine delete_legendre_value(p)
+  subroutine deallocate_legendre_value(p)
     implicit none
     class(legendre_value), intent(inout) :: p
     if(.not.p%allocated) return
@@ -81,13 +81,13 @@ contains
     deallocate(p%vp1)
     p%allocated = .false.
     return
-  end subroutine delete_legendre_value
+  end subroutine deallocate_legendre_value
 
   subroutine allocate_legendre_value(p,mmax)
     implicit none
     class(legendre_value), intent(inout) :: p
     integer(i4b), intent(in) :: mmax
-    if(p%allocated) call p%delete()
+    if(p%allocated) call p%deallocate()
     allocate(p%vm1(0:mmax))
     allocate(p%v(0:mmax))
     allocate(p%vp1(0:mmax))
@@ -103,7 +103,7 @@ contains
     class(legendre_value), intent(inout) :: p
     real(dp), intent(in) :: th
     integer(i4b), intent(in) :: mmax
-    call p%delete()    
+    call p%deallocate()    
     p%l  = -1
     p%th = th
     p%mmax = mmax
@@ -203,7 +203,7 @@ contains
   !============================================================================!
 
 
-  subroutine delete_wigner_value(p)
+  subroutine deallocate_wigner_value(p)
     implicit none
     class(wigner_value), intent(inout) :: p
     if(.not.p%allocated) return
@@ -212,7 +212,7 @@ contains
     deallocate(p%vp1)
     p%allocated = .false.
     return
-  end subroutine delete_wigner_value
+  end subroutine deallocate_wigner_value
   
   
   subroutine allocate_wigner_value(p,nmax,mmax)
@@ -220,7 +220,7 @@ contains
     class(wigner_value), intent(inout) :: p
     integer(i4b), intent(in) :: nmax,mmax
     integer(i4b) :: pdim,n,m
-    if(p%allocated) call p%delete()
+    if(p%allocated) call p%deallocate()
     if(mmax >= nmax) then
        p%mmax = mmax
        p%nmax = nmax
@@ -456,7 +456,7 @@ contains
           end do
        end do
     end do
-    call p%delete()    
+    call p%deallocate()    
     return
   end subroutine set_wigner_array
 

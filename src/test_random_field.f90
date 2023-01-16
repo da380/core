@@ -39,7 +39,7 @@ program test_random_field
   open(newunit = io,file='random.out')
   do i = 1,nx
      x = x1 + (i-1)*dx
-     write(io,*) x,fun%eval(x,1),fun%eval(x,fun%ns),fun%corr_eval(x,x0)
+     write(io,*) x,fun%eval(1,x),fun%corr_eval(x,x0)
   end do
   close(io)
   
@@ -65,7 +65,7 @@ program test_random_field
   ph0 = 100.0_dp
   th0 = (90.0_dp-th0)*deg2rad
   ph0 = ph0*deg2rad
-  call fun_S2%coef(lmax,fun_S2%ns/2,ulm)
+  call fun_S2%coef(fun_S2%ns/2,lmax,ulm)
 !  call fun_S2%corr_coef(th0,ph0,lmax,ulm)  
   call grid%SH_itrans(ulm,u)
   

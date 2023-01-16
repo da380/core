@@ -10,7 +10,7 @@ module module_quadrature
      real(dp), dimension(:), allocatable :: x
      real(dp), dimension(:), allocatable :: w
    contains
-     procedure :: delete => delete_quadrature
+     procedure :: deallocate => deallocate_quadrature
      procedure :: allocate => allocate_quadrature   
      procedure :: order => order_quadrature     
      procedure :: points => points_quadrature
@@ -73,7 +73,7 @@ contains
   !                      general quadrature procedures                      !
   !=========================================================================!
 
-  subroutine delete_quadrature(self)
+  subroutine deallocate_quadrature(self)
     implicit none
     class(quadrature), intent(inout) :: self
     if(.not.self%allocated) return
@@ -81,7 +81,7 @@ contains
     deallocate(self%w)
     self%allocated = .false.
     return
-  end subroutine delete_quadrature
+  end subroutine deallocate_quadrature
   
   subroutine allocate_quadrature(self,n)
     use module_error
@@ -89,7 +89,7 @@ contains
     class(quadrature), intent(inout) :: self
     integer(i4b), intent(in) :: n
     call check(n > 0,'allocate_quadrature','quadrature order less than 1')
-    call self%delete()
+    call self%deallocate()
     self%n = n
     allocate(self%x(n))
     allocate(self%w(n))

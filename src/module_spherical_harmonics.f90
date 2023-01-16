@@ -27,7 +27,7 @@ module module_spherical_harmonics
      type(C_PTR) :: plan_r2c
      type(C_PTR) :: plan_c2r     
    contains
-     procedure :: delete => delete_gauss_legendre_grid
+     procedure :: deallocate => deallocate_gauss_legendre_grid
      procedure :: build =>  build_gauss_legendre_grid
      procedure :: ph =>  ph_gauss_legednre_grid
      procedure, private :: SH_trans_gauss_legendre_grid
@@ -66,7 +66,7 @@ contains
   !           procedures for the grid type          !
   !-------------------------------------------------!
   
-  subroutine delete_gauss_legendre_grid(grid)
+  subroutine deallocate_gauss_legendre_grid(grid)
     use module_fftw3
     implicit none
     class(gauss_legendre_grid), intent(inout) :: grid
@@ -78,7 +78,7 @@ contains
     call fftw_destroy_plan(grid%plan_c2r)
     grid%allocated = .false.
     return
-  end subroutine delete_gauss_legendre_grid
+  end subroutine deallocate_gauss_legendre_grid
 
   
   subroutine build_gauss_legendre_grid(self,lmax,nmax,fftw_flag)
@@ -109,7 +109,7 @@ contains
     end if
 
     ! check it has not already been allocated
-    call self%delete()
+    call self%deallocate()
 
     ! store the basic parameters
     self%lmax = lmax

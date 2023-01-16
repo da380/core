@@ -15,13 +15,13 @@ module module_interp
      real(dp) :: fp_save
    contains
      procedure :: set => set_interp_1D
-     procedure :: delete => delete_interp_1D
+     procedure :: deallocate => deallocate_interp_1D
      procedure :: find   => find_interp_1D
      procedure :: f    => value_interp_1D
      procedure :: fp => derivative_interp_1D
   end type interp_1D
   private :: set_interp_1D,find_interp_1D, &
-             value_interp_1D,delete_interp_1D
+             value_interp_1D,deallocate_interp_1D
   
   
   type, extends(interp_1D) :: interp_1D_cubic
@@ -36,13 +36,13 @@ module module_interp
    contains
      procedure :: parms => parameters_cubic_spline
      procedure :: set => set_interp_1D_cubic
-     procedure :: delete => delete_interp_1D_cubic
+     procedure :: deallocate => deallocate_interp_1D_cubic
      procedure :: f => value_interp_1D_cubic
      procedure :: fp => derivative_interp_1D_cubic
      procedure :: fpp => derivative2_interp_1D_cubic
   end type interp_1D_cubic
  private :: set_interp_1D_cubic,value_interp_1D_cubic, &
-             delete_interp_1D_cubic
+             deallocate_interp_1D_cubic
 
 
  
@@ -60,7 +60,7 @@ module module_interp
     real(dp) :: y_save,dy_save
   contains
     procedure :: set => set_interp_2D
-    procedure :: delete => delete_interp_2D
+    procedure :: deallocate => deallocate_interp_2D
     procedure :: find   => find_interp_2D
     procedure :: f    => value_interp_2D    
  end type interp_2D
@@ -70,7 +70,7 @@ module module_interp
      type(interp_1D_cubic), dimension(:), allocatable :: cs
    contains
      procedure :: set => set_interp_2D_bicubic_spline
-     procedure :: delete => delete_interp_2D_bicubic_spline
+     procedure :: deallocate => deallocate_interp_2D_bicubic_spline
      procedure :: f    => value_interp_2D_bicubic_spline    
  end type interp_2D_bicubic_spline
 
@@ -184,13 +184,13 @@ contains
   end function derivative_interp_1D
 
 
-  subroutine delete_interp_1D(self)
+  subroutine deallocate_interp_1D(self)
     implicit none
     class(interp_1D) :: self
     deallocate(self%xx,self%ff)
     self%allocated = .false.    
     return
-  end subroutine delete_interp_1D
+  end subroutine deallocate_interp_1D
   
     
   !==================================================================!
@@ -387,13 +387,13 @@ contains
   end function derivative2_interp_1D_cubic
   
   
-  subroutine delete_interp_1D_cubic(self)
+  subroutine deallocate_interp_1D_cubic(self)
     implicit none
     class(interp_1D_cubic) :: self
     deallocate(self%xx,self%ff,self%ff2)
     self%allocated = .false.    
     return
-  end subroutine delete_interp_1D_cubic
+  end subroutine deallocate_interp_1D_cubic
 
 
 
@@ -463,13 +463,13 @@ contains
 
  
     
-  subroutine delete_interp_2D(self)
+  subroutine deallocate_interp_2D(self)
     implicit none
     class(interp_2D) :: self
     deallocate(self%xx,self%yy,self%ff)
     self%allocated = .false.    
     return
-  end subroutine delete_interp_2D
+  end subroutine deallocate_interp_2D
 
 
   subroutine find_interp_2D(self,x,y,ix,iy)
@@ -601,14 +601,14 @@ contains
   end subroutine set_interp_2D_bicubic_spline
 
 
-  subroutine delete_interp_2D_bicubic_spline(self)
+  subroutine deallocate_interp_2D_bicubic_spline(self)
     implicit none
     integer(i4b) :: i,n
     class(interp_2D_bicubic_spline) :: self
     deallocate(self%xx,self%yy,self%ff,self%cs)    
     self%allocated = .false.    
     return
-  end subroutine delete_interp_2D_bicubic_spline
+  end subroutine deallocate_interp_2D_bicubic_spline
 
 
   real(dp) function value_interp_2D_bicubic_spline(self,x,y) result(f)
