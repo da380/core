@@ -6,27 +6,29 @@ program test_SEM_1D
   implicit none
 
 
-  integer(i4b) :: m,n
-  type(real_matrix) :: b
-  type(LU_real_matrix) :: a
+  integer(i4b) :: m,n,i,j
+  real(dp) :: start,end
+  type(rmat) :: a,b,c
+
+  a = rmat(3)
+  b = rmat(3,1)
+  do i = 1,a%m
+     call a%inc(i,i,1.0_dp)
+     call b%inc(i,1,1.0_dp)     
+     do j = 1,a%n
+        call a%inc(i,j,0.3_dp*(i+j))
+     end do
+  end do
+  c = rmat(a)
+  call a%LU()
+  call a%LU_backsub(b)
+  print *, matmul(c%elem,b%elem)
 
 
-  a = LU_real_matrix(3)
-  a%elem(1,1) =  2.0_dp
-  a%elem(2,1) = -1.0_dp
-  a%elem(2,2) =  3.0_dp
-  a%elem(3,3) =  1.0_dp
-  call a%factorise()
-
-
-  b = real_matrix(3,1)
-  b%elem(1,1) = 1.0_dp
-  b%elem(2,1) = 2.0_dp
   
-  call a%backsub(b)
-  print *, b%elem
 
   
+
 
 end program test_SEM_1D
 
