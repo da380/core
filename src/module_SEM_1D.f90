@@ -187,71 +187,79 @@ contains
   end subroutine build_boolean_scalar_1D
 
 
-!  subroutine build_identity_matrix_1D(mesh,ibool,a)
-!    class(mesh_1D), intent(in) :: mesh
-!    integer(i4b), dimension(:,:), intent(in) :: ibool
-!    type(real_symmetric_banded_matrix), intent(inout) :: a    
-!    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
-!    real(dp) :: jacl,ijacl,tmp    
-!    associate(nspec => mesh%nspec, & 
-!              ngll  => mesh%ngll,  &
-!              jac   => mesh%jac,   &
-!              w     => mesh%w,     &
-!              hp    => mesh%hp)
-!      ndim = maxval(ibool)
-!      kd  = 0
-!      ldb = kd+1
-!      call a%allocate(kd,ndim)
-!      do ispec = 1,nspec
-!         jacl  = jac(ispec)
-!         ijacl = 1.0_dp/jacl
-!         do inode = 1,ngll
-!            i = ibool(inode,ispec)
-!            if(i == 0) cycle
-!            tmp = w(inode)*jacl
-!            call a%add(i,i,tmp)
-!         end do
-!      end do
-!    end associate
-!    return
-!  end subroutine build_identity_matrix_1D
+  subroutine build_identity_matrix_1D(mesh,ibool,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    class(rm), intent(inout) ::  a
+    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
+    real(dp) :: jacl,ijacl,tmp    
+    associate(nspec => mesh%nspec, & 
+              ngll  => mesh%ngll,  &
+              jac   => mesh%jac,   &
+              w     => mesh%w,     &
+              hp    => mesh%hp)
+      ndim = maxval(ibool)      
+      select type(a)
+      class is(brm)
+         call a%band(ngll-1,ngll-1)
+      class is(psbrm)
+         call a%band(ngll-1)
+      end select
+      call a%allocate(ndim,ndim)
+      do ispec = 1,nspec
+         jacl  = jac(ispec)
+         ijacl = 1.0_dp/jacl
+         do inode = 1,ngll
+            i = ibool(inode,ispec)
+            if(i == 0) cycle
+            tmp = w(inode)*jacl
+            call a%inc(i,i,tmp)
+         end do
+      end do
+    end associate
+    return
+  end subroutine build_identity_matrix_1D
   
   
-!  subroutine build_laplace_matrix_1D(mesh,ibool,a)
-!    class(mesh_1D), intent(in) :: mesh
-!    integer(i4b), dimension(:,:), intent(in) :: ibool
-!    type(real_symmetric_banded_matrix), intent(inout) :: a    
-!    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
-!    real(dp) :: ijacl,tmp    
-!    associate(nspec => mesh%nspec, & 
-!              ngll  => mesh%ngll,  &
-!              jac   => mesh%jac,   &
-!              w     => mesh%w,     &
-!              hp    => mesh%hp)
-!      ndim = maxval(ibool)
-!      kd  = ngll-1
-!      ldb = kd+1
-!      call a%allocate(kd,ndim)
-!      do ispec = 1,nspec
-!         ijacl  = 1.0_dp/jac(ispec)
-!         do inode = 1,ngll
-!            i = ibool(inode,ispec)
-!            if(i == 0) cycle
-!            do jnode = inode,ngll
-!               j = ibool(jnode,ispec)
-!               if(j == 0) cycle
-!               do knode = 1,ngll
-!                  tmp =   hp(knode,inode) &
-!                        * hp(knode,jnode) &
-!                        * w(knode)*ijacl
-!                  call a%add(i,j,tmp)
-!               end do
-!            end do            
-!         end do
-!      end do
-!    end associate
-!    return
-!  end subroutine build_laplace_matrix_1D
+  subroutine build_laplace_matrix_1D(mesh,ibool,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    class(rm), intent(inout) ::  a    
+    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
+    real(dp) :: ijacl,tmp    
+    associate(nspec => mesh%nspec, & 
+              ngll  => mesh%ngll,  &
+              jac   => mesh%jac,   &
+              w     => mesh%w,     &
+              hp    => mesh%hp)
+      ndim = maxval(ibool)
+      select type(a)
+      class is(brm)
+         call a%band(ngll-1,ngll-1)
+      class is(psbrm)
+         call a%band(ngll-1)
+      end select
+      call a%allocate(ndim,ndim)
+      do ispec = 1,nspec
+         ijacl  = 1.0_dp/jac(ispec)
+         do inode = 1,ngll
+            i = ibool(inode,ispec)
+            if(i == 0) cycle
+            do jnode = inode,ngll
+               j = ibool(jnode,ispec)
+               if(j == 0) cycle
+               do knode = 1,ngll
+                  tmp =   hp(knode,inode) &
+                        * hp(knode,jnode) &
+                        * w(knode)*ijacl
+                  call a%inc(i,j,tmp)
+               end do
+            end do            
+         end do
+      end do
+    end associate
+    return
+  end subroutine build_laplace_matrix_1D
   
   
 end module module_SEM_1D

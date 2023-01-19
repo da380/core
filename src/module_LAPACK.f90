@@ -1,101 +1,65 @@
-module module_LAPACK
+ module module_LAPACK
 
   use module_constants
   use module_error
   implicit none
 
-  type rmat
-     ! basic data
+  type rm
      logical :: allocated = .false.
      logical :: square = .false.
      logical :: check = .false.
+     character(len=:), allocatable, private :: factor  
      integer(i4b) :: m = 0
      integer(i4b) :: n = 0
      real(dp), dimension(:,:), allocatable :: elem
-     ! LU data
-     logical :: LU_factorised = .false.
-     integer(i4b), dimension(:), allocatable :: ipiv
+     integer(i4b), dimension(:), allocatable, private :: ipiv
    contains
-     procedure :: deallocate => deallocate_rmat
-     procedure :: inc        => increment_rmat
-     procedure :: LU         => LU_rmat
-     procedure :: LU_backsub => LU_backsub_rmat
-  end type rmat
+     procedure :: deallocate => deallocate_rm
+     procedure :: allocate => allocate_rm
+     procedure :: set        => set_rm
+     procedure :: inc        => inc_rm
+     procedure :: LU         => LU_rm
+     procedure :: LU_bsub => LU_bsub_rm
+     procedure :: fac        => factor_rm
+     procedure :: bsub       => bsub_rm
+  end type rm
 
-  interface rmat
-     procedure :: allocate_rmat_from_dimensions
-     procedure :: allocate_square_rmat_from_dimensions
-     procedure :: allocate_rmat_from_rmat
-     procedure :: allocate_rmat_from_array
-  end interface rmat
-
-  type, extends(rmat) :: brmat
+  type, extends(rm) :: brm
+     logical :: band_set = .false.
      integer(i4b) :: kl
      integer(i4b) :: ku
      integer(i4b) :: ld
    contains
-     procedure :: deallocate => deallocate_brmat
-     procedure :: inc        => increment_brmat
-     procedure :: LU         => LU_brmat
-     procedure :: LU_backsub => LU_backsub_brmat
-  end type brmat
+     procedure :: deallocate => deallocate_brm
+     procedure :: band => band_brm
+     procedure :: allocate => allocate_brm
+     procedure :: set        => set_brm
+     procedure :: inc        => inc_brm
+     procedure :: LU         => LU_brm
+     procedure :: LU_bsub => LU_bsub_brm
+     procedure :: row_ind    => row_ind_brm
+  end type brm
 
-
-  interface brmat
-     procedure :: allocate_brmat_from_dimensions
-     procedure :: allocate_square_brmat_from_dimensions
-     procedure :: allocate_brmat_from_brmat
-  end interface brmat
-
-
-  type, extends(rmat) :: sbrmat
-     integer(i4b) :: kl
-     integer(i4b) :: ku
+  type, extends(rm) :: psbrm
+     logical :: band_set = .false.
+     integer(i4b) :: kd
      integer(i4b) :: ld
    contains
-     procedure :: deallocate => deallocate_sbrmat
-     procedure :: inc        => increment_sbrmat
-     procedure :: LU         => LU_sbrmat
-     procedure :: LU_backsub => LU_backsub_sbrmat
-  end type sbrmat
+     procedure :: deallocate     => deallocate_psbrm
+     procedure :: band => band_psbrm
+     procedure :: allocate => allocate_psbrm
+     procedure :: set            => set_psbrm
+     procedure :: inc            => inc_psbrm
+     procedure :: LU             => LU_psbrm
+     procedure :: LU_bsub        => LU_bsub_psbrm
+     procedure :: row_ind        => row_ind_psbrm
+     procedure :: Cholesky       => Cholesky_psbrm
+     procedure :: Cholesky_bsub  => Cholesky_bsub_psbrm
+     procedure :: fac            => factor_psbrm
+     procedure :: bsub           => bsub_psbrm
+  end type psbrm
 
 
-  interface sbrmat
-     procedure :: allocate_sbrmat_from_dimensions
-     procedure :: allocate_square_sbrmat_from_dimensions
-     procedure :: allocate_sbrmat_from_sbrmat
-  end interface sbrmat
-
-
-
-  type complex_mat
-     ! basic data
-     logical :: allocated = .false.
-     logical :: square = .false.
-     logical :: check = .false.
-     integer(i4b) :: m = 0
-     integer(i4b) :: n = 0
-     complex(dpc), dimension(:,:), allocatable :: elem
-     ! LU data
-     logical :: LU_factorised = .false.
-     integer(i4b), dimension(:), allocatable :: ipiv
-   contains
-     procedure :: deallocate => deallocate_complex_mat
-     procedure :: increment_real_complex_mat
-     procedure :: increment_complex_complex_mat
-     generic   :: inc => increment_real_complex_mat, &
-                         increment_complex_complex_mat
-     procedure :: LU         => LU_complex_mat
-     procedure :: LU_backsub => LU_backsub_complex_mat
-  end type complex_mat
-
-  interface complex_mat
-     procedure :: allocate_complex_mat_from_dimensions
-     procedure :: allocate_square_complex_mat_from_dimensions
-     procedure :: allocate_complex_mat_from_complex_mat
-     procedure :: allocate_complex_mat_from_rmat
-     procedure :: allocate_complex_mat_from_array
-  end interface complex_mat
   
 contains
 
@@ -103,53 +67,75 @@ contains
   !===============================================!
   !          procedures for real matrices         !
   !===============================================!
-
-  !---------------------------------------!
-  !       methods for real matrices       !
-  !---------------------------------------!
     
-  subroutine deallocate_rmat(self)
-    class(rmat), intent(inout) :: self
+  subroutine deallocate_rm(self)
+    class(rm), intent(inout) :: self
     if(.not.self%allocated) return
     self%m = 0
     self%n = 0
-    deallocate(self%elem)
-    if(self%LU_factorised) then
-       deallocate(self%ipiv)
-       self%LU_factorised = .false.
-    end if
+    if(allocated(self%ipiv)) deallocate(self%ipiv)
+    if(allocated(self%elem)) deallocate(self%elem)
+    if(allocated(self%factor)) deallocate(self%factor)
     self%allocated = .false.    
     return
-  end subroutine deallocate_rmat
+  end subroutine deallocate_rm
+
+
+  subroutine allocate_rm(self,m,n)
+    class(rm), intent(inout) :: self
+    integer(i4b), intent(in) :: m,n
+    self%m = m
+    self%n = n
+    allocate(self%elem(m,n))
+    self%elem = 0.0_dp
+    if(m == n) self%square = .true.
+    self%allocated = .true.
+    return
+  end subroutine allocate_rm
+
   
-  subroutine increment_rmat(self,i,j,val)
-    class(rmat), intent(inout) :: self
+  subroutine set_rm(self,i,j,val)
+    class(rm), intent(inout) :: self
     integer(i4b), intent(in) :: i,j
     real(dp), intent(in) :: val
     if(self%check) then
-       call check(self%allocated,'increment_rmat','matrix not allocated')
-       call check(i >= 1 .and. i <= self%m,'increment_rmat','row index out of range')
-       call check(j >= 1 .and. j <= self%n,'increment_rmat','column index out of range')
+       call check(self%allocated,'set_rm','matrix not allocated')
+       call check(i >= 1 .and. i <= self%m,'set_rm','row index out of range')
+       call check(j >= 1 .and. j <= self%n,'set_rm','column index out of range')
+    end if
+    self%elem(i,j) =  val
+    return
+  end subroutine set_rm
+  
+  subroutine inc_rm(self,i,j,val)
+    class(rm), intent(inout) :: self
+    integer(i4b), intent(in) :: i,j
+    real(dp), intent(in) :: val
+    if(self%check) then
+       call check(self%allocated,'inc_rm','matrix not allocated')
+       call check(i >= 1 .and. i <= self%m,'inc_rm','row index out of range')
+       call check(j >= 1 .and. j <= self%n,'inc_rm','column index out of range')
     end if
     self%elem(i,j) = self%elem(i,j) + val
     return
-  end subroutine increment_rmat
+  end subroutine inc_rm
     
-  subroutine LU_rmat(self)
-    class(rmat), intent(inout) :: self
+  subroutine LU_rm(self)
+    class(rm), intent(inout) :: self
     integer(i4b) :: info
-    call check(self%allocated,'LU_rmat','matrix not allocated')
-    if(self%LU_factorised) return
+    call check(self%allocated,'LU_rm','matrix not allocated')
+    if(self%factor == 'LU') return
+    call check(self%factor == '','LU_rm','matrix already factored using different scheme')    
     allocate(self%ipiv(min(self%m,self%n)))
     call dgetrf(self%m,self%n,self%elem,self%m,self%ipiv,info)
-    call check(info == 0,'LU_rmat','problem with factorisation')
-    self%LU_factorised = .true.
+    call check(info == 0,'LU_rm','problem with factorisation')
+    self%factor = 'LU'
     return
-  end subroutine LU_rmat
+  end subroutine LU_rm
 
-  subroutine LU_backsub_rmat(self,b,trans)
-    class(rmat), intent(in) :: self
-    class(rmat), intent(inout) :: b
+  subroutine LU_bsub_rm(self,b,trans)
+    class(rm), intent(in) :: self
+    type(rm), intent(inout) :: b
     logical, intent(in), optional :: trans
     character(len=1) :: trans_char
     integer(i4b) :: m,nrhs,info
@@ -159,252 +145,137 @@ contains
     end if
     m = self%m
     nrhs = b%n
-    call check(self%square,'LU_backsub_rmat','matrix not square')
-    call check(self%LU_factorised,'LU_backsub_rmat','matrix not factorised')
-    call check(m == b%m,'LU_backsub_rmat','rhs has the wrong dimensions')
+    call check(self%square,'LU_bsub_rm','matrix not square')
+    call check(self%factor == 'LU','LU_bsub_rm','matrix not LU factorised')
+    call check(m == b%m,'LU_bsub_rm','rhs has the wrong dimensions')
     call dgetrs	(trans_char,m,nrhs,self%elem,m,self%ipiv,b%elem,m,info)
-    call check(info == 0,'LU_backsub_rmat','problem with back substitution')
+    call check(info == 0,'LU_bsub_rm','problem with back substitution')
     return
-  end subroutine LU_backsub_rmat
+  end subroutine LU_bsub_rm
 
 
+  subroutine factor_rm(self,type)
+    class(rm), intent(inout) :: self
+    character(len=*), intent(in), optional :: type
+    character(len=:), allocatable :: type_local
+    if(present(type)) then
+       type_local = type
+    else
+       type_local = 'LU'
+    end if
+    if(type_local == 'LU') then
+       call self%LU()
+    else
+       call error('factor_rm','unknown scheme')
+    end if
+    return
+  end subroutine factor_rm
+
+  subroutine bsub_rm(self,b,trans)
+    class(rm), intent(in) :: self
+    type(rm), intent(inout) :: b
+    logical, intent(in), optional :: trans
+    call check(self%factor /= '','bsub_rm','matrix not factorised')
+    if(self%factor == 'LU') then
+       call self%LU_bsub(b,trans)
+    else
+       call error('bsub_rm','unknown factorisation scheme')
+    end if
+    return
+  end subroutine bsub_rm
   
-  !---------------------------------------!
-  !     constructors for real matrices    !
-  !---------------------------------------!
-
-  type(rmat) function allocate_rmat_from_dimensions(m,n) result(a)
-    integer(i4b), intent(in) :: m,n
-    a%m = m
-    a%n = n
-    allocate(a%elem(m,n))
-    a%elem = 0.0_dp
-    if(m == n) a%square = .true.
-    a%allocated = .true.
-    return
-  end function allocate_rmat_from_dimensions
-
-
-  type(rmat) function allocate_square_rmat_from_dimensions(m) result(a)
-    integer(i4b), intent(in) :: m    
-    a = rmat(m,m)
-    return
-  end function allocate_square_rmat_from_dimensions
-
-
-  type(rmat) function allocate_rmat_from_rmat(b) result(a)
-    type(rmat), intent(in) :: b
-    a%m = b%m
-    a%n = b%n
-    allocate(a%elem,source = b%elem)
-    a%square = b%square
-    a%allocated = .true.
-    return
-  end function allocate_rmat_from_rmat
-
-
-  type(rmat) function allocate_rmat_from_array(b) result(a)
-    real(dp), dimension(:,:), intent(in) :: b
-    a%m = size(b,1)
-    a%n = size(b,2)
-    if(a%m == a%n) a%square = .true.
-    allocate(a%elem,source = b)
-    a%allocated = .true.
-    return
-  end function allocate_rmat_from_array
-
-
-  type(rmat) function unit_rmat(m) result(a)
-    integer(i4b), intent(in) :: m
-    integer(i4b) :: i
-    a = rmat(m)
-    do i = 1,m
-       call a%inc(i,i,1.0_dp)
-    end do
-    return
-  end function unit_rmat
 
 
   !===============================================!
-  !      procedures for band real matrices      !
+  !      procedures for band real matrices        !
   !===============================================!
-
-  !---------------------------------------!
-  !    methods for band real matrices   !
-  !---------------------------------------!
     
-  subroutine deallocate_brmat(self)
-    class(brmat), intent(inout) :: self
+  subroutine deallocate_brm(self)
+    class(brm), intent(inout) :: self
     if(.not.self%allocated) return
-    self%m = 0
-    self%n = 0
     self%kl = 0
     self%ku = 0
     self%ld = 0
-    deallocate(self%elem)
-    if(self%LU_factorised) then
-       deallocate(self%ipiv)
-       self%LU_factorised = .false.
-    end if
-    self%allocated = .false.    
+    self%band_set = .false.
+    call self%rm%deallocate()
     return
-  end subroutine deallocate_brmat
+  end subroutine deallocate_brm
+
+  subroutine band_brm(self,kl,ku)
+    class(brm), intent(inout) :: self
+    integer(i4b), intent(in) :: kl,ku
+    call check(kl >= 0,'band_brm','invalid lower bandwidth')
+    call check(ku >= 0,'band_brm','invalid upper bandwidth')
+    self%kl = kl
+    self%ku = ku
+    self%band_set = .true.
+    return
+  end subroutine band_brm
   
-  subroutine increment_brmat(self,i,j,val)
-    class(brmat), intent(inout) :: self
+
+  subroutine allocate_brm(self,m,n)
+    class(brm), intent(inout) :: self
+    integer(i4b), intent(in) :: m,n
+    call check(self%band_set,'allocate_brm','bandwidths not set')
+    self%m  = m
+    self%n  = n
+    if(self%kl > m-1) self%kl = m-1
+    if(self%ku > n-1) self%kl = n-1
+    self%ld = 2*self%kl + self%ku + 1
+    allocate(self%elem(self%ld,n))
+    self%elem = 0.0_dp
+    if(m == n) self%square = .true.
+    self%allocated = .true.
+    return
+  end subroutine allocate_brm
+
+
+  subroutine set_brm(self,i,j,val)
+    class(brm), intent(inout) :: self
     integer(i4b), intent(in) :: i,j
     real(dp), intent(in) :: val
     integer(i4b) :: k
     if(self%check) then
-       call check(self%allocated,'increment_brmat','matrix not allocated')
-       call check(i >= 1 .and. i <= min(self%m,j+self%kl),'increment_brmat','row index out of range')
-       call check(j >= 1 .and. j <= min(self%n,i+self%kl),'increment_brmat','column index out of range')       
+       call check(self%allocated,'set_brm','matrix not allocated')
+       call check(i >= 1 .and. i <= min(self%m,j+self%kl),'set_brm','row index out of range')
+       call check(j >= 1 .and. j <= min(self%n,i+self%kl),'set_brm','column index out of range')       
     end if    
     k = self%kl + self%ku + 1 + i - j
-    self%elem(k,j) = self%elem(k,j) + val
+    self%elem(k,j) =  val
     return
-  end subroutine increment_brmat
-    
-  subroutine LU_brmat(self)
-    class(brmat), intent(inout) :: self
-    integer(i4b) :: info
-    call check(self%allocated,'LU_brmat','matrix not allocated')
-    if(self%LU_factorised) return
-    allocate(self%ipiv(min(self%m,self%n)))
-    call dgbtrf(self%m,self%n,self%kl,self%ku,self%elem,self%ld,self%ipiv,info)
-    call check(info == 0,'LU_brmat','problem with factorisation')
-    self%LU_factorised = .true.
-    return
-  end subroutine LU_brmat
-
-  subroutine LU_backsub_brmat(self,b,trans)
-    class(brmat), intent(in) :: self
-    class(rmat), intent(inout) :: b
-    logical, intent(in), optional :: trans
-    character(len=1) :: trans_char
-    integer(i4b) :: m,nrhs,info
-    trans_char = 'N'    
-    if(present(trans)) then
-       if(trans) trans_char = 'T'
-    end if
-    m = self%m
-    nrhs = b%n
-    call check(self%square,'LU_backsub_brmat','matrix not square')
-    call check(self%LU_factorised,'LU_backsub_brmat','matrix not factorised')
-    call check(m == b%m,'LU_backsub_brmat','rhs has the wrong dimensions')
-    call dgbtrs(trans_char,m,self%kl,self%ku,nrhs,self%elem,self%ld,self%ipiv,b%elem,m,info)	
-    call check(info == 0,'LU_backsub_brmat','problem with back substitution')
-    return
-  end subroutine LU_backsub_brmat
-
-
-  !----------------------------------------------!
-  !     constructors for band real matrices    !
-  !----------------------------------------------!
-
-  type(brmat) function allocate_brmat_from_dimensions(m,n,kl,ku) result(a)
-    integer(i4b), intent(in) :: m,n,kl,ku
-    a%m  = m
-    a%n  = n
-    a%kl = kl
-    a%ku = ku
-    a%ld = 2*a%kl + a%ku + 1
-    allocate(a%elem(a%ld,n))
-    a%elem = 0.0_dp
-    if(m == n) a%square = .true.
-    a%allocated = .true.
-    return
-  end function allocate_brmat_from_dimensions
-
-
-  type(brmat) function allocate_square_brmat_from_dimensions(m,kl,ku) result(a)
-    integer(i4b), intent(in) :: m,kl,ku    
-    a = brmat(m,m,kl,ku)
-    return
-  end function allocate_square_brmat_from_dimensions
-
-
-  type(brmat) function allocate_brmat_from_brmat(b) result(a)
-    type(brmat), intent(in) :: b
-    a%m = b%m
-    a%n = b%n
-    a%kl = b%kl
-    a%ku = b%ku
-    a%ld = b%ld
-    allocate(a%elem,source = b%elem)
-    a%square = b%square
-    a%allocated = .true.
-    return
-  end function allocate_brmat_from_brmat
-
+  end subroutine set_brm
   
-  type(brmat) function unit_brmat(m,kl,ku) result(a)
-    integer(i4b), intent(in) :: m,kl,ku
-    integer(i4b) :: i
-    a = brmat(m,kl,ku)
-    do i = 1,m
-       call a%inc(i,i,1.0_dp)
-    end do
-    return
-  end function unit_brmat
-
-
-
-  !===============================================!
-  !      procedures for symmetric_band real matrices      !
-  !===============================================!
-
-  !---------------------------------------!
-  !    methods for symmetric_band real matrices   !
-  !---------------------------------------!
-    
-  subroutine deallocate_sbrmat(self)
-    class(sbrmat), intent(inout) :: self
-    if(.not.self%allocated) return
-    self%m = 0
-    self%n = 0
-    self%kl = 0
-    self%ku = 0
-    self%ld = 0
-    deallocate(self%elem)
-    if(self%LU_factorised) then
-       deallocate(self%ipiv)
-       self%LU_factorised = .false.
-    end if
-    self%allocated = .false.    
-    return
-  end subroutine deallocate_sbrmat
-  
-  subroutine increment_sbrmat(self,i,j,val)
-    class(sbrmat), intent(inout) :: self
+  subroutine inc_brm(self,i,j,val)
+    class(brm), intent(inout) :: self
     integer(i4b), intent(in) :: i,j
     real(dp), intent(in) :: val
     integer(i4b) :: k
     if(self%check) then
-       call check(self%allocated,'increment_sbrmat','matrix not allocated')
-       call check(i >= 1 .and. i <= min(self%m,j+self%kl),'increment_sbrmat','row index out of range')
-       call check(j >= 1 .and. j <= min(self%n,i+self%kl),'increment_sbrmat','column index out of range')       
+       call check(self%allocated,'inc_brm','matrix not allocated')
+       call check(i >= 1 .and. i <= min(self%m,j+self%kl),'inc_brm','row index out of range')
+       call check(j >= 1 .and. j <= min(self%n,i+self%kl),'inc_brm','column index out of range')       
     end if    
     k = self%kl + self%ku + 1 + i - j
     self%elem(k,j) = self%elem(k,j) + val
     return
-  end subroutine increment_sbrmat
+  end subroutine inc_brm
     
-  subroutine LU_sbrmat(self)
-    class(sbrmat), intent(inout) :: self
+  subroutine LU_brm(self)
+    class(brm), intent(inout) :: self
     integer(i4b) :: info
-    call check(self%allocated,'LU_sbrmat','matrix not allocated')
-    if(self%LU_factorised) return
+    call check(self%allocated,'LU_brm','matrix not allocated')
+    if(self%factor == 'LU') return
+    call check(self%factor == '','LU_rm','matrix already factored using different scheme')        
     allocate(self%ipiv(min(self%m,self%n)))
     call dgbtrf(self%m,self%n,self%kl,self%ku,self%elem,self%ld,self%ipiv,info)
-    call check(info == 0,'LU_sbrmat','problem with factorisation')
-    self%LU_factorised = .true.
+    call check(info == 0,'LU_brm','problem with factorisation')
+    self%factor = 'LU'
     return
-  end subroutine LU_sbrmat
+  end subroutine LU_brm
 
-  subroutine LU_backsub_sbrmat(self,b,trans)
-    class(sbrmat), intent(in) :: self
-    class(rmat), intent(inout) :: b
+  subroutine LU_bsub_brm(self,b,trans)
+    class(brm), intent(in) :: self
+    type(rm), intent(inout) :: b
     logical, intent(in), optional :: trans
     character(len=1) :: trans_char
     integer(i4b) :: m,nrhs,info
@@ -414,223 +285,214 @@ contains
     end if
     m = self%m
     nrhs = b%n
-    call check(self%square,'LU_backsub_sbrmat','matrix not square')
-    call check(self%LU_factorised,'LU_backsub_sbrmat','matrix not factorised')
-    call check(m == b%m,'LU_backsub_sbrmat','rhs has the wrong dimensions')
+    call check(self%square,'LU_bsub_brm','matrix not square')
+    call check(self%factor == 'LU','LU_bsub_rm','matrix not LU factorised')
+    call check(m == b%m,'LU_bsub_brm','rhs has the wrong dimensions')
     call dgbtrs(trans_char,m,self%kl,self%ku,nrhs,self%elem,self%ld,self%ipiv,b%elem,m,info)	
-    call check(info == 0,'LU_backsub_sbrmat','problem with back substitution')
+    call check(info == 0,'LU_bsub_brm','problem with back substitution')
     return
-  end subroutine LU_backsub_sbrmat
+  end subroutine LU_bsub_brm
 
 
-  !----------------------------------------------!
-  !     constructors for symmetric_band real matrices    !
-  !----------------------------------------------!
-
-  type(sbrmat) function allocate_sbrmat_from_dimensions(m,n,kl,ku) result(a)
-    integer(i4b), intent(in) :: m,n,kl,ku
-    a%m  = m
-    a%n  = n
-    a%kl = kl
-    a%ku = ku
-    a%ld = 2*a%kl + a%ku + 1
-    allocate(a%elem(a%ld,n))
-    a%elem = 0.0_dp
-    if(m == n) a%square = .true.
-    a%allocated = .true.
-    return
-  end function allocate_sbrmat_from_dimensions
-
-
-  type(sbrmat) function allocate_square_sbrmat_from_dimensions(m,kl,ku) result(a)
-    integer(i4b), intent(in) :: m,kl,ku    
-    a = sbrmat(m,m,kl,ku)
-    return
-  end function allocate_square_sbrmat_from_dimensions
-
-
-  type(sbrmat) function allocate_sbrmat_from_sbrmat(b) result(a)
-    type(sbrmat), intent(in) :: b
-    a%m = b%m
-    a%n = b%n
-    a%kl = b%kl
-    a%ku = b%ku
-    a%ld = b%ld
-    allocate(a%elem,source = b%elem)
-    a%square = b%square
-    a%allocated = .true.
-    return
-  end function allocate_sbrmat_from_sbrmat
-
-  
-  type(sbrmat) function unit_sbrmat(m,kl,ku) result(a)
-    integer(i4b), intent(in) :: m,kl,ku
-    integer(i4b) :: i
-    a = sbrmat(m,kl,ku)
-    do i = 1,m
-       call a%inc(i,i,1.0_dp)
-    end do
-    return
-  end function unit_sbrmat
-
-
-
-  
-
-
-  !===============================================!
-  !        procedures for complex matrices        !
-  !===============================================!
-
-  !---------------------------------------!
-  !      methods for complex matrices     !
-  !---------------------------------------!
-    
-  subroutine deallocate_complex_mat(self)
-    class(complex_mat), intent(inout) :: self
-    if(.not.self%allocated) return
-    self%m = 0
-    self%n = 0
-    deallocate(self%elem)
-    if(self%LU_factorised) then
-       deallocate(self%ipiv)
-       self%LU_factorised = .false.
-    end if
-    self%allocated = .false.    
-    return
-  end subroutine deallocate_complex_mat
-  
-  subroutine increment_complex_complex_mat(self,i,j,val)
-    class(complex_mat), intent(inout) :: self
+  integer(i4b) function row_ind_brm(self,i,j) result(k)
+    class(brm), intent(in) :: self
     integer(i4b), intent(in) :: i,j
-    complex(dpc), intent(in) :: val
     if(self%check) then
-       call check(self%allocated,'increment_complex_mat','matrix not allocated')
-       call check(i >= 1 .and. i <= self%m,'increment_complex_mat','row index out of range')
-       call check(j >= 1 .and. j <= self%n,'increment_complex_mat','column index out of range')
-    end if
-    self%elem(i,j) = self%elem(i,j) + val
+       call check(self%allocated,'inc_brm','matrix not allocated')
+       call check(i >= 1 .and. i <= min(self%m,j+self%kl),'inc_brm','row index out of range')
+       call check(j >= 1 .and. j <= min(self%n,i+self%kl),'inc_brm','column index out of range')       
+    end if    
+    k = self%kl + self%ku + 1 + i - j    
     return
-  end subroutine increment_complex_complex_mat
+  end function row_ind_brm
 
-  subroutine increment_real_complex_mat(self,i,j,val)
-    class(complex_mat), intent(inout) :: self
+
+
+  !============================================================!
+  !      procedures for positive symmetric band real matrices  !
+  !============================================================!
+    
+  subroutine deallocate_psbrm(self)
+    class(psbrm), intent(inout) :: self
+    if(.not.self%allocated) return
+    self%kd = 0
+    self%ld = 0
+    call self%rm%deallocate()
+    return
+  end subroutine deallocate_psbrm
+
+
+  subroutine band_psbrm(self,kd)
+    class(psbrm), intent(inout) :: self
+    integer(i4b), intent(in) :: kd
+    call check(kd >= 0,'band_psbrm','invalid bandwidth')
+    self%kd = kd
+    self%band_set = .true.
+    return
+  end subroutine band_psbrm
+  
+
+  subroutine allocate_psbrm(self,m,n)
+    class(psbrm), intent(inout) :: self
+    integer(i4b), intent(in) :: m,n
+    call check(m == n,'allocate_psbrm','matices must be square')
+    call check(self%band_set,'allocate_psbrm','bandwidths not set')
+    self%m  = m
+    self%n  = n
+    if(self%kd > m-1) self%kd = m-1
+    self%ld = self%kd+1
+    allocate(self%elem(self%ld,m))
+    self%elem = 0.0_dp
+    self%square = .true.
+    self%allocated = .true.
+    return
+  end subroutine allocate_psbrm
+
+    
+  subroutine set_psbrm(self,i,j,val)
+    class(psbrm), intent(inout) :: self
     integer(i4b), intent(in) :: i,j
     real(dp), intent(in) :: val
+    integer(i4b) :: k,il,jl
+    if(il <= jl) then
+       il = i
+       jl = j
+    else
+       il = j
+       jl = i
+    end if
     if(self%check) then
-       call check(self%allocated,'increment_complex_mat','matrix not allocated')
-       call check(i >= 1 .and. i <= self%m,'increment_complex_mat','row index out of range')
-       call check(j >= 1 .and. j <= self%n,'increment_complex_mat','column index out of range')
-    end if
-    self%elem(i,j) = self%elem(i,j) + val
+       call check(self%allocated,'set_psbrm','matrix not allocated')
+       call check(il >= max(1,jl-self%kd),'set_psbrm','row index out of range')
+       call check(jl >= 1 .and.  jl <= self%m,'set_psbrm','column index out of range')
+
+    end if    
+    k = self%kd + 1 + i - j
+    self%elem(k,j) =  val
     return
-  end subroutine increment_real_complex_mat
+  end subroutine set_psbrm
+  
+  subroutine inc_psbrm(self,i,j,val)
+    class(psbrm), intent(inout) :: self
+    integer(i4b), intent(in) :: i,j
+    real(dp), intent(in) :: val
+    integer(i4b) :: k,il,jl
+    if(il <= jl) then
+       il = i
+       jl = j
+    else
+       il = j
+       jl = i
+    end if
+    if(self%check) then
+       call check(self%allocated,'set_psbrm','matrix not allocated')
+       call check(il >= max(1,jl-self%kd),'set_psbrm','row index out of range')
+       call check(jl >= 1 .and.  jl <= self%m,'set_psbrm','column index out of range')
+
+    end if    
+    k = self%kd + 1 + i - j
+    self%elem(k,j) =  self%elem(k,j) + val
+    return
+  end subroutine inc_psbrm
     
-  subroutine LU_complex_mat(self)
-    class(complex_mat), intent(inout) :: self
-    integer(i4b) :: info
-    call check(self%allocated,'LU_complex_mat','matrix not allocated')
-    if(self%LU_factorised) return
-    allocate(self%ipiv(min(self%m,self%n)))
-    call zgetrf(self%m,self%n,self%elem,self%m,self%ipiv,info)
-    call check(info == 0,'LU_complex_mat','problem with factorisation')
-    self%LU_factorised = .true.
+  subroutine LU_psbrm(self)
+    class(psbrm), intent(inout) :: self
+    call error('LU_psbrm','factorisation not implemented')
     return
-  end subroutine LU_complex_mat
+  end subroutine LU_psbrm
 
-  subroutine LU_backsub_complex_mat(self,b,trans)
-    class(complex_mat), intent(in) :: self
-    class(complex_mat), intent(inout) :: b
+  subroutine LU_bsub_psbrm(self,b,trans)
+    class(psbrm), intent(in) :: self
+    type(rm), intent(inout) :: b
     logical, intent(in), optional :: trans
-    character(len=1) :: trans_char
-    integer(i4b) :: m,nrhs,info
-    trans_char = 'N'    
-    if(present(trans)) then
-       if(trans) trans_char = 'T'
+    call error('LU_bsub_psbrm','factorisation not implemented')
+    return
+  end subroutine LU_bsub_psbrm
+
+
+  integer(i4b) function row_ind_psbrm(self,i,j) result(k)
+    class(psbrm), intent(in) :: self
+    integer(i4b), intent(in) :: i,j
+    integer(i4b) :: il,jl
+    if(il <= jl) then
+       il = i
+       jl = j
+    else
+       il = j
+       jl = i
     end if
-    m = self%m
-    nrhs = b%n
-    call check(self%square,'LU_backsub_complex_mat','matrix not square')
-    call check(self%LU_factorised,'LU_backsub_complex_mat','matrix not factorised')
-    call check(m == b%m,'LU_backsub_complex_mat','rhs has the wrong dimensions')
-    call zgetrs	(trans_char,m,nrhs,self%elem,m,self%ipiv,b%elem,m,info)
-    call check(info == 0,'LU_backsub_complex_mat','problem with back substitution')
+    if(self%check) then
+       call check(self%allocated,'set_psbrm','matrix not allocated')
+       call check(il >= max(1,jl-self%kd),'set_psbrm','row index out of range')
+       call check(jl >= 1 .and.  jl <= self%m,'set_psbrm','column index out of range')
+
+    end if    
+    k = self%kd + 1 + i - j
     return
-  end subroutine LU_backsub_complex_mat
-
-
-  
-  !---------------------------------------!
-  !   constructors for complex matrices   !
-  !---------------------------------------!
-
-  type(complex_mat) function allocate_complex_mat_from_dimensions(m,n) result(a)
-    integer(i4b), intent(in) :: m,n
-    a%m = m
-    a%n = n
-    allocate(a%elem(m,n))
-    a%elem = 0.0_dp
-    if(m == n) a%square = .true.
-    a%allocated = .true.
-    return
-  end function allocate_complex_mat_from_dimensions
-
-
-  type(complex_mat) function allocate_square_complex_mat_from_dimensions(m) result(a)
-    integer(i4b), intent(in) :: m    
-    a = complex_mat(m,m)
-    return
-  end function allocate_square_complex_mat_from_dimensions
-
-
-  type(complex_mat) function allocate_complex_mat_from_complex_mat(b) result(a)
-    type(complex_mat), intent(in) :: b
-    a%m = b%m
-    a%n = b%n
-    allocate(a%elem,source = b%elem)
-    a%square = b%square
-    a%allocated = .true.
-    return
-  end function allocate_complex_mat_from_complex_mat
-
-
-  type(complex_mat) function allocate_complex_mat_from_rmat(b) result(a)
-    type(rmat), intent(in) :: b
-    a%m = b%m
-    a%n = b%n
-    allocate(a%elem(a%m,a%n))
-    a%elem = b%elem
-    a%square = b%square
-    a%allocated = .true.
-    return
-  end function allocate_complex_mat_from_rmat
-
-
-  type(complex_mat) function allocate_complex_mat_from_array(b) result(a)
-    complex(dpc), dimension(:,:), intent(in) :: b
-    a%m = size(b,1)
-    a%n = size(b,2)
-    if(a%m == a%n) a%square = .true.
-    allocate(a%elem,source = b)
-    a%allocated = .true.
-    return
-  end function allocate_complex_mat_from_array
-
-
-  type(complex_mat) function unit_complex_mat(m) result(a)
-    integer(i4b), intent(in) :: m
-    integer(i4b) :: i
-    a = complex_mat(m)
-    do i = 1,m
-       call a%inc(i,i,1.0_dp)
-    end do
-    return
-  end function unit_complex_mat
-
-
+  end function row_ind_psbrm
 
   
 
+  subroutine Cholesky_psbrm(self)
+    class(psbrm), intent(inout) :: self
+    integer(i4b) :: info
+    call check(self%allocated,'Cholesky_brm','matrix not allocated')
+    if(self%factor == 'Cholesky') return
+    call check(self%factor == '','Cholesky_psbrm','matrix already factored using different scheme')        
+    call dpbtrf('U',self%n,self%kd,self%elem,self%ld,info)
+    call check(info == 0,'Cholesky_brm','problem with factorisation')
+    self%factor = 'Cholesky'
+    return
+  end subroutine Cholesky_psbrm
+
+
+  subroutine Cholesky_bsub_psbrm(self,b,trans)
+    class(psbrm), intent(in) :: self
+    type(rm), intent(inout) :: b
+    logical, intent(in), optional :: trans
+    integer(i4b) :: info
+    call check(self%allocated,'Cholesky_bsub_brm','matrix not allocated')
+    call check(self%factor == 'Cholesky','Cholesky_bsub_brm','matrix not factorised')
+    call check(self%m == b%m,'Cholesky_bsub_brm','rhs has the wrong dimensions')
+    call dpbtrs	('U',self%n,self%kd,b%n,self%elem,self%ld,b%elem,b%m,info)
+    call check(info == 0,'Cholesky_brm','problem with back substitution')
+    return
+  end subroutine Cholesky_bsub_psbrm
+
+ 
+  subroutine factor_psbrm(self,type)
+    class(psbrm), intent(inout) :: self
+    character(len=*), intent(in), optional :: type
+    character(len=:), allocatable :: type_local
+    if(present(type)) then
+       type_local = type
+    else
+       type_local = 'Cholesky'
+    end if
+    if(type_local == 'Cholesky') then
+       call self%Cholesky()
+    else if(type_local == 'LU') then
+       call self%LU()
+    else
+       call error('factor_psbrm','unknown scheme')
+    end if
+    return
+  end subroutine factor_psbrm
+
+  subroutine bsub_psbrm(self,b,trans)
+    class(psbrm), intent(in) :: self
+    type(rm), intent(inout) :: b
+    logical, intent(in), optional :: trans
+    call check(self%factor /= '','bsub_psbrm','matrix not factorised')
+    if(self%factor == 'LU') then
+       call self%LU_bsub(b,trans)
+    else if(self%factor == 'Cholesky') then
+       call self%Cholesky_bsub(b,trans)
+    else
+       call error('bsub_psbrm','unknown factorisation scheme')
+    end if
+    return
+  end subroutine bsub_psbrm
   
   
 end module module_LAPACK

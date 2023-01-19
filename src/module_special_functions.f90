@@ -3,8 +3,6 @@ module module_special_functions
   implicit none
  
 
-
-
   type legendre_value
      logical  :: allocated = .false.
      integer(i4b) :: l
