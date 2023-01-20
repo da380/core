@@ -18,6 +18,8 @@
      procedure :: allocate => allocate_rm
      procedure :: set        => set_rm
      procedure :: inc        => inc_rm
+     procedure :: set_sym    => set_sym_rm
+     procedure :: inc_sym    => inc_sym_rm
      procedure :: LU         => LU_rm
      procedure :: LU_bsub => LU_bsub_rm
      procedure :: fac        => factor_rm
@@ -35,6 +37,8 @@
      procedure :: allocate => allocate_brm
      procedure :: set        => set_brm
      procedure :: inc        => inc_brm
+     procedure :: set_sym    => set_sym_brm
+     procedure :: inc_sym    => inc_sym_brm
      procedure :: LU         => LU_brm
      procedure :: LU_bsub => LU_bsub_brm
      procedure :: row_ind    => row_ind_brm
@@ -50,6 +54,8 @@
      procedure :: allocate => allocate_psbrm
      procedure :: set            => set_psbrm
      procedure :: inc            => inc_psbrm
+     procedure :: set_sym        => set_psbrm
+     procedure :: inc_sym        => inc_psbrm
      procedure :: LU             => LU_psbrm
      procedure :: LU_bsub        => LU_bsub_psbrm
      procedure :: row_ind        => row_ind_psbrm
@@ -119,6 +125,42 @@ contains
     self%elem(i,j) = self%elem(i,j) + val
     return
   end subroutine inc_rm
+
+
+  subroutine set_sym_rm(self,i,j,val)
+    class(rm), intent(inout) :: self
+    integer(i4b), intent(in) :: i,j
+    real(dp), intent(in) :: val
+    if(self%check) then
+       call check(self%allocated,'set_rm','matrix not allocated')
+       call check(i >= 1 .and. i <= self%m,'set_sym_rm','row index out of range')
+       call check(j >= 1 .and. j <= self%n,'set_sym_rm','column index out of range')
+    end if    
+    self%elem(i,j) = val
+    if(i /= j) then
+       self%elem(j,i) =  val
+    end if
+    return
+  end subroutine set_sym_rm
+
+  
+  
+  subroutine inc_sym_rm(self,i,j,val)
+    class(rm), intent(inout) :: self
+    integer(i4b), intent(in) :: i,j
+    real(dp), intent(in) :: val
+    if(self%check) then
+       call check(self%allocated,'inc_rm','matrix not allocated')
+       call check(i >= 1 .and. i <= self%m,'inc_rm','row index out of range')
+       call check(j >= 1 .and. j <= self%n,'inc_rm','column index out of range')
+    end if    
+    self%elem(i,j) = self%elem(i,j) + val
+    if(i /= j) then
+       self%elem(j,i) = self%elem(j,i) + val
+    end if
+    return
+  end subroutine inc_sym_rm
+  
     
   subroutine LU_rm(self)
     class(rm), intent(inout) :: self
@@ -259,6 +301,45 @@ contains
     self%elem(k,j) = self%elem(k,j) + val
     return
   end subroutine inc_brm
+
+
+  subroutine set_sym_brm(self,i,j,val)
+    class(brm), intent(inout) :: self
+    integer(i4b), intent(in) :: i,j
+    real(dp), intent(in) :: val
+    integer(i4b) :: k
+    if(self%check) then
+       call check(self%allocated,'set_brm','matrix not allocated')
+       call check(i >= 1 .and. i <= min(self%m,j+self%kl),'set_sym_brm','row index out of range')
+       call check(j >= 1 .and. j <= min(self%n,i+self%kl),'set_sym_brm','column index out of range')       
+    end if    
+    k = self%kl + self%ku + 1 + i - j
+    self%elem(k,j) =  val
+    if(i /= j) then
+       k = self%kl + self%ku + 1 + j - i
+       self%elem(k,i) =  val
+    end if
+    return
+  end subroutine set_sym_brm
+
+  subroutine inc_sym_brm(self,i,j,val)
+    class(brm), intent(inout) :: self
+    integer(i4b), intent(in) :: i,j
+    real(dp), intent(in) :: val
+    integer(i4b) :: k
+    if(self%check) then
+       call check(self%allocated,'inc_brm','matrix not allocated')
+       call check(i >= 1 .and. i <= min(self%m,j+self%kl),'inc_sym_brm','row index out of range')
+       call check(j >= 1 .and. j <= min(self%n,i+self%kl),'inc_sym_brm','column index out of range')       
+    end if    
+    k = self%kl + self%ku + 1 + i - j
+    self%elem(k,j) = self%elem(k,j) + val
+    if(i /= j) then
+       k = self%kl + self%ku + 1 + j - i
+       self%elem(k,i) = self%elem(k,i) + val
+    end if
+    return
+  end subroutine inc_sym_brm
     
   subroutine LU_brm(self)
     class(brm), intent(inout) :: self

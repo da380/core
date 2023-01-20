@@ -2,6 +2,7 @@ module module_SEM_1D
 
   use module_constants
   use module_error
+  use module_util
   use module_LAPACK
   use module_quadrature
   use module_special_functions  
@@ -21,6 +22,10 @@ module module_SEM_1D
      procedure :: deallocate => deallocate_mesh_1D
      procedure :: set_dirichlet => set_dirichlet_mesh_1D
      procedure :: set_neumann => set_neumann_mesh_1D
+     procedure :: set_left_dirichlet => set_dirichlet_left_mesh_1D
+     procedure :: set_left_neumann => set_neumann_left_mesh_1D
+     procedure :: set_right_dirichlet => set_dirichlet_right_mesh_1D
+     procedure :: set_right_neumann => set_neumann_right_mesh_1D
   end type mesh_1D
 
   interface build_mesh_1D
@@ -110,6 +115,7 @@ contains
           do inode = 1,ngll
              mesh%x(inode,ispec) = x1_loc + 0.5_dp*dx_loc*(quad%x(inode)+1.0_dp)
           end do
+          mesh%jac(ispec) = 0.5_dp*(dx_loc)
        end do
     end do
         
@@ -157,14 +163,43 @@ contains
     return
   end subroutine set_neumann_mesh_1D
 
+
+  subroutine set_dirichlet_left_mesh_1D(mesh)
+    class(mesh_1D), intent(inout) :: mesh
+    mesh%left_dirichlet  = .true.
+    return
+  end subroutine set_dirichlet_left_mesh_1D
+
+
+  subroutine set_neumann_left_mesh_1D(mesh)
+    class(mesh_1D), intent(inout) :: mesh
+    mesh%left_dirichlet  = .false.
+    return
+  end subroutine set_neumann_left_mesh_1D
+
+
+  subroutine set_dirichlet_right_mesh_1D(mesh)
+    class(mesh_1D), intent(inout) :: mesh
+    mesh%right_dirichlet  = .true.
+    return
+  end subroutine set_dirichlet_right_mesh_1D
+
+
+  subroutine set_neumann_right_mesh_1D(mesh)
+    class(mesh_1D), intent(inout) :: mesh
+    mesh%right_dirichlet  = .false.
+    return
+  end subroutine set_neumann_right_mesh_1D
+
   
   !==========================================================================!
   !                   routines for the laplace equation in 1D                !
   !==========================================================================!
 
-  subroutine build_boolean_scalar_1D(mesh,ibool)
+  subroutine build_boolean_scalar_1D(mesh,ibool,ndim)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(inout), allocatable :: ibool
+    integer(i4b), intent(out), optional :: ndim
     integer(i4b) :: ispec,nspec,inode,ngll,count
     nspec = mesh%nspec
     ngll  = mesh%ngll
@@ -183,6 +218,7 @@ contains
        count = count-1
     end do
     if(mesh%right_dirichlet) ibool(ngll,nspec) = 0
+    if(present(ndim)) ndim = maxval(ibool)
     return
   end subroutine build_boolean_scalar_1D
 
@@ -198,14 +234,10 @@ contains
               jac   => mesh%jac,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      ndim = maxval(ibool)      
-      select type(a)
-      class is(brm)
-         call a%band(ngll-1,ngll-1)
-      class is(psbrm)
-         call a%band(ngll-1)
-      end select
-      call a%allocate(ndim,ndim)
+      ndim = maxval(ibool)
+      call check(a%allocated,'build_identity_matrix_1D','matrix not allocated')
+      call check(a%m == ndim,'build_identity_matrix_1D','matrix wrong row dimension')
+      call check(a%n == ndim,'build_identity_matrix_1D','matrix wrong column dimension')
       do ispec = 1,nspec
          jacl  = jac(ispec)
          ijacl = 1.0_dp/jacl
@@ -224,22 +256,18 @@ contains
   subroutine build_laplace_matrix_1D(mesh,ibool,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    class(rm), intent(inout) ::  a    
-    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
-    real(dp) :: ijacl,tmp    
+    class(rm), intent(inout) ::  a
+    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j,jnode1
+    real(dp) :: ijacl,tmp
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
               jac   => mesh%jac,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
       ndim = maxval(ibool)
-      select type(a)
-      class is(brm)
-         call a%band(ngll-1,ngll-1)
-      class is(psbrm)
-         call a%band(ngll-1)
-      end select
-      call a%allocate(ndim,ndim)
+      call check(a%allocated,'build_laplace_matrix_1D','matrix not allocated')
+      call check(a%m == ndim,'build_laplace_matrix_1D','matrix wrong row dimension')
+      call check(a%n == ndim,'build_laplace_matrix_1D','matrix wrong column dimension')
       do ispec = 1,nspec
          ijacl  = 1.0_dp/jac(ispec)
          do inode = 1,ngll
@@ -248,18 +276,86 @@ contains
             do jnode = inode,ngll
                j = ibool(jnode,ispec)
                if(j == 0) cycle
+               tmp = 0.0_dp
                do knode = 1,ngll
-                  tmp =   hp(knode,inode) &
-                        * hp(knode,jnode) &
-                        * w(knode)*ijacl
-                  call a%inc(i,j,tmp)
+                  tmp = tmp + hp(knode,inode) &
+                            * hp(knode,jnode) &
+                            * w(knode)*ijacl
                end do
+               call a%inc_sym(i,j,tmp)
             end do            
          end do
       end do
     end associate
     return
   end subroutine build_laplace_matrix_1D
+
+
+  subroutine build_delta_force_1D(mesh,ibool,xs,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    real(dp), intent(in) :: xs
+    class(rm), intent(inout) ::  a    
+    integer(i4b) :: ndim,i,inode,ispec
+    real(dp), dimension(mesh%ngll) :: h
+    associate(nspec => mesh%nspec, & 
+              ngll  => mesh%ngll,  &
+              jac   => mesh%jac,   &
+              w     => mesh%w,     &
+              x     => mesh%x,     & 
+              hp    => mesh%hp)
+      ndim = maxval(ibool)      
+      call check(a%allocated,'build_delta_force_matrix_1D','matrix not allocated')
+      call check(a%m == ndim,'build_delta_force_matrix_1D','matrix wrong row dimension')
+      call check(a%n == 1,'build_delta_force_matrix_1D','matrix wrong column dimension')
+      call check(xs >= x(1,1) .and. xs <= x(ngll,nspec),'build_delta_force_matrix_1D','force location out of range')
+      i = bisect_list(reshape(x,(/nspec*ngll/)),xs)
+      ispec = i/mesh%ngll+1
+      call lagrange_polynomial(xs,ngll,x(:,ispec),h)
+      do inode = 1,ngll
+         i = ibool(inode,ispec)
+         if(i == 0) cycle
+         call a%inc(i,1,h(inode))
+      end do
+    end associate
+    return
+  end subroutine build_delta_force_1D
+
+
+
+  subroutine build_gaussian_force_1D(mesh,ibool,xs,sig,amp,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    real(dp), intent(in) :: xs,sig,amp
+    class(rm), intent(inout) ::  a    
+    integer(i4b) :: ndim,i,inode,ispec
+    real(dp) :: tmp,jacl
+    real(dp), dimension(mesh%ngll) :: h
+    associate(nspec => mesh%nspec, & 
+              ngll  => mesh%ngll,  &
+              jac   => mesh%jac,   &
+              w     => mesh%w,     &
+              x     => mesh%x,     & 
+              hp    => mesh%hp)
+      ndim = maxval(ibool)      
+      call check(a%allocated,'build_delta_force_matrix_1D','matrix not allocated')
+      call check(a%m == ndim,'build_delta_force_matrix_1D','matrix wrong row dimension')
+      call check(a%n == 1,'build_delta_force_matrix_1D','matrix wrong column dimension')
+      do ispec = 1,nspec
+         jacl = jac(ispec)
+         do inode = 1,ngll
+            i = ibool(inode,ispec)
+            if(i == 0) cycle
+            tmp = -0.5_dp*(x(inode,ispec)-xs)**2/sig**2
+            tmp = amp*exp(tmp)*w(inode)*jacl
+            call a%inc(i,1,tmp)
+         end do
+      end do
+    end associate
+    return
+  end subroutine build_gaussian_force_1D
+
+
   
   
 end module module_SEM_1D
