@@ -1,50 +1,54 @@
-program test_SEM_1D
+  program test_SEM_1D
 
   use module_constants
   use module_LAPACK
   use module_SEM_1D
   implicit none
 
+  logical :: real = .false.
   integer(i4b) :: ngll,ndim,io,inode,ispec,i
   integer(i4b), dimension(:,:), allocatable :: ibool
-  real(dp) :: x1,x2,dx,xs,u,sig,amp,start,finish
+  real(dp) :: x,x1,x2,dx,xs,u,sig,amp,lambda
   type(mesh_1D) :: mesh
-  class(rm), allocatable :: a
-  type(rm) :: b
+  class(mat), allocatable :: a
+  type(mat) :: b
 
   ! build the mesh and boolean array
   ngll = 5
   x1 = 0.0_dp
   x2 = 1.0_dp
-  dx = 0.001_dp
+  dx = 0.01_dp
   mesh = build_mesh_1D(ngll,x1,x2,dx)
   call mesh%set_dirichlet()
-  call build_boolean_scalar_1D(mesh,ibool,ndim)  
+  call build_boolean_scalar_1D(mesh,ibool,ndim)
+
+  ! set the coefficient functions 
+  do ispec = 1,mesh%nspec
+     do inode = 1,mesh%ngll
+        x = mesh%x(inode,ispec)
+        mesh%mu(inode,ispec) = 1.0_dp + 0.9_dp*sin(8*pi*x)
+     end do
+  end do
 
   ! build the system matrix
-!  allocate(rm::a)
-!  allocate(brm::a)
-  allocate(psbrm::a)
+  allocate(hbmat::a)
   select type(a)
-  class is(brm)
+  class is(bmat)
      call a%band(ngll-1,ngll-1)
-  class is(psbrm)
+  class is(hbmat)
      call a%band(ngll-1)
   end select
-  call a%allocate(ndim,ndim)
+  call a%allocate(ndim,ndim,real=real)
   call build_laplace_matrix_1D(mesh,ibool,a)
-  call cpu_time(start)
   call a%fac()
-  call cpu_time(finish)
-  print *, finish-start
 
-
+  
+  
   ! build the force and solve
-  call b%allocate(ndim,1)
-  xs = 0.3_dp
-  sig = 0.05_dp
+  call b%allocate(ndim,1,real=real)
+  xs = 0.5_dp
+  sig = 0.01_dp
   amp = 1.0_dp
-!  call build_delta_force_1D(mesh,ibool,xs,b)
   call build_gaussian_force_1D(mesh,ibool,xs,sig,amp,b)
   call a%bsub(b)
   
@@ -55,7 +59,7 @@ program test_SEM_1D
      do inode = 1,mesh%ngll
         i = ibool(inode,ispec)
         if(i /= 0) then
-           u = b%elem(i,1)
+           call b%get(i,1,u)
         else
            u = 0.0_dp
         end if

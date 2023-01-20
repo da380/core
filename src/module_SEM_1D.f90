@@ -10,14 +10,16 @@ module module_SEM_1D
 
   type mesh_1D
      logical :: allocated = .false.
-     logical :: left_dirichlet  = .false.
-     logical :: right_dirichlet = .false.
+     logical, private :: left_dirichlet  = .false.
+     logical, private :: right_dirichlet = .false.
      integer(i4b) :: nspec = 0
      integer(i4b) :: ngll  = 0
      real(dp), dimension(:,:), allocatable :: x
+     real(dp), dimension(:,:), allocatable :: rho
+     real(dp), dimension(:,:), allocatable :: mu
      real(dp), dimension(:), allocatable :: jac
      real(dp), dimension(:), allocatable :: w
-     real(dp), dimension(:,:), allocatable :: hp
+     real(dp), dimension(:,:), allocatable :: hp     
    contains
      procedure :: deallocate => deallocate_mesh_1D
      procedure :: set_dirichlet => set_dirichlet_mesh_1D
@@ -34,7 +36,6 @@ module module_SEM_1D
      procedure :: build_mesh_1D_simple
   end interface build_mesh_1D
 
-
   
 contains
 
@@ -49,7 +50,9 @@ contains
     if(.not.self%allocated) return
     self%nspec = 0
     self%ngll  = 0
-    deallocate(self%x)    
+    deallocate(self%x)
+    deallocate(self%rho)    
+    deallocate(self%mu)    
     deallocate(self%jac)
     deallocate(self%w)
     deallocate(self%hp)
@@ -57,6 +60,18 @@ contains
     return
   end subroutine deallocate_mesh_1D
 
+
+  subroutine test(x,fun)
+    real(dp), intent(in) :: x
+    interface
+       real(dp) function fun(x)
+         use module_constants
+         real(dp), intent(in) :: x
+       end function fun
+    end interface
+    return
+  end subroutine test
+  
   type(mesh_1D) function build_mesh_1D(ngll,x,dx) result(mesh)
     integer(i4b), intent(in) :: ngll
     real(dp), dimension(:), intent(in) :: x
@@ -66,7 +81,6 @@ contains
     real(dp) :: x1,x2,dx_loc,x1_loc,x2_loc
     real(dp), dimension(ngll) :: h
     type(gauss_lobatto_quadrature) :: quad
-
 
     nsec = size(dx)
     call check(nsec+1 == size(x),'build_mesh_1D','input arrays have wrong dimensions')
@@ -81,11 +95,12 @@ contains
        nspec = nspec + nspec_loc
     end do
 
-
     ! set up the mesh arrays
     mesh%nspec = nspec
     mesh%ngll = ngll
     allocate(mesh%x(ngll,nspec))
+    allocate(mesh%rho(ngll,nspec))
+    allocate(mesh%mu(ngll,nspec))
     allocate(mesh%jac(nspec))
     allocate(mesh%hp(ngll,ngll))
     mesh%allocated = .true.
@@ -114,11 +129,13 @@ contains
           x2_loc = x1_loc+dx_loc
           do inode = 1,ngll
              mesh%x(inode,ispec) = x1_loc + 0.5_dp*dx_loc*(quad%x(inode)+1.0_dp)
+             mesh%rho(inode,ispec) = 1.0_dp
+             mesh%mu(inode,ispec) = 1.0_dp
           end do
           mesh%jac(ispec) = 0.5_dp*(dx_loc)
        end do
     end do
-        
+    
     return
   end function build_mesh_1D
   
@@ -226,12 +243,13 @@ contains
   subroutine build_identity_matrix_1D(mesh,ibool,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    class(rm), intent(inout) ::  a
+    class(mat), intent(inout) ::  a
     integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
-    real(dp) :: jacl,ijacl,tmp    
+    real(dp) :: jacl,ijacl,tmp
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
               jac   => mesh%jac,   &
+              rho   => mesh%rho,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
       ndim = maxval(ibool)
@@ -244,7 +262,7 @@ contains
          do inode = 1,ngll
             i = ibool(inode,ispec)
             if(i == 0) cycle
-            tmp = w(inode)*jacl
+            tmp = rho(inode,ispec)*w(inode)*jacl            
             call a%inc(i,i,tmp)
          end do
       end do
@@ -256,12 +274,13 @@ contains
   subroutine build_laplace_matrix_1D(mesh,ibool,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    class(rm), intent(inout) ::  a
-    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j,jnode1
-    real(dp) :: ijacl,tmp
+    class(mat), intent(inout) ::  a
+    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
+    real(dp) :: ijacl,tmp,fac
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
               jac   => mesh%jac,   &
+              mu    => mesh%mu,    &
               w     => mesh%w,     &
               hp    => mesh%hp)
       ndim = maxval(ibool)
@@ -278,7 +297,8 @@ contains
                if(j == 0) cycle
                tmp = 0.0_dp
                do knode = 1,ngll
-                  tmp = tmp + hp(knode,inode) &
+                  tmp = tmp + mu(knode,ispec) &
+                            * hp(knode,inode) &
                             * hp(knode,jnode) &
                             * w(knode)*ijacl
                end do
@@ -291,11 +311,16 @@ contains
   end subroutine build_laplace_matrix_1D
 
 
+  !==========================================================================!
+  !                               force routines                             !
+  !==========================================================================!
+
+  
   subroutine build_delta_force_1D(mesh,ibool,xs,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
     real(dp), intent(in) :: xs
-    class(rm), intent(inout) ::  a    
+    class(mat), intent(inout) ::  a    
     integer(i4b) :: ndim,i,inode,ispec
     real(dp), dimension(mesh%ngll) :: h
     associate(nspec => mesh%nspec, & 
@@ -322,12 +347,11 @@ contains
   end subroutine build_delta_force_1D
 
 
-
   subroutine build_gaussian_force_1D(mesh,ibool,xs,sig,amp,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
     real(dp), intent(in) :: xs,sig,amp
-    class(rm), intent(inout) ::  a    
+    class(mat), intent(inout) ::  a    
     integer(i4b) :: ndim,i,inode,ispec
     real(dp) :: tmp,jacl
     real(dp), dimension(mesh%ngll) :: h

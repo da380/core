@@ -3,9 +3,11 @@ module module_random_fields
   use module_constants
   use module_util
   use module_error
+  use module_LAPACK
   use module_quadrature
   use module_interp
   use module_fftw3
+  use module_SEM_1D
   use module_special_functions
   use module_spherical_harmonics
   use, intrinsic :: iso_c_binding
@@ -18,7 +20,7 @@ module module_random_fields
   
   type, abstract :: GRF_1D
      integer(i4b) :: ns = 0
-     real(dp) :: a,b
+     real(dp) :: x1,x2
    contains
      procedure(GRF_1D_deallocate),    deferred :: deallocate
      procedure(GRF_1D_sample),    deferred :: sample
@@ -393,9 +395,6 @@ contains
     return
   end function corr_eval_GRF_1D_SEM
 
-
-
-
   
   type(GRF_1D_SEM) function build_GRF_1D_SEM(x1,x2,lam,s,sig,eps) &
                             result(fun)
@@ -423,8 +422,8 @@ contains
        eps_loc = eps_default
     end if
 
-    fun%a = x1
-    fun%b = x2
+    fun%x1 = x1
+    fun%x2 = x2
     
     ! estimate the cutoff eigenvalue
     nmax = 0
@@ -573,8 +572,8 @@ contains
     else
        eps_loc = eps_default
    end if
-   fun%a = x1
-   fun%b = x2
+   fun%x1 = x1
+   fun%x2 = x2
    
     ! estimate the cutoff eigenvalue
     nmax = 0
@@ -839,8 +838,8 @@ contains
        plan_flag = FFTW_MEASURE
     end if
 
-    fun%a = x1
-    fun%b = x2
+    fun%x1 = x1
+    fun%x2 = x2
     
     ! find maximum wavenumber
     i = 0
