@@ -18,6 +18,8 @@
    contains
      procedure :: deallocate => deallocate_mat
      procedure :: allocate => allocate_mat
+     procedure :: complexify => complexify_mat
+     procedure :: realify => realify_mat
      procedure :: set_r_mat
      procedure :: set_c_mat
      generic   :: set        => set_r_mat,set_c_mat
@@ -84,6 +86,11 @@
      procedure :: bsub           => bsub_hbmat
   end type hbmat
 
+  interface add
+     procedure :: add_mat
+     procedure :: add_bmat
+     procedure :: add_hbmat          
+  end interface add
   
   
 contains
@@ -127,7 +134,39 @@ contains
     return
   end subroutine allocate_mat
 
+
+  subroutine complexify_mat(self)
+    class(mat), intent(inout) :: self
+    integer(i4b) :: m,n
+    if(.not.self%real) return
+    if(self%allocated) then
+       m = size(self%elem_r,1)
+       n = size(self%elem_r,2)
+       allocate(self%elem_c(m,n))
+       self%elem_c = self%elem_r
+       deallocate(self%elem_r)
+    end if
+    self%real = .false.
+    return
+  end subroutine complexify_mat
+
+
+  subroutine realify_mat(self)
+    class(mat), intent(inout) :: self
+    integer(i4b) :: m,n
+    if(self%real) return
+    if(self%allocated) then
+       m = size(self%elem_c,1)
+       n = size(self%elem_c,2)
+       allocate(self%elem_r(m,n))
+       self%elem_r = self%elem_c
+       deallocate(self%elem_c)
+    end if
+    self%real = .true.
+    return
+  end subroutine realify_mat
   
+
   subroutine set_r_mat(self,i,j,val)
     class(mat), intent(inout) :: self
     integer(i4b), intent(in) :: i,j
@@ -174,7 +213,7 @@ contains
        call check(j >= 1 .and. j <= self%n,'get_mat','column index out of range')
     end if
     if(self%real) then
-       val  = self%elem_r(i,j)
+       val = self%elem_r(i,j)
     else
        val = self%elem_c(i,j)
     end if
@@ -357,8 +396,8 @@ contains
     end if
     return
   end subroutine bsub_mat
-  
 
+  
 
   !===============================================!
   !      procedures for band real matrices        !
@@ -587,7 +626,6 @@ contains
     k = self%kl + self%ku + 1 + i - j    
     return
   end function row_ind_bmat
-
 
 
   !============================================================!
@@ -913,6 +951,65 @@ contains
   end subroutine bsub_hbmat
 
 
+
+
+  !==============================================================!
+  !                       algebraic routines                     !
+  !==============================================================!
+
   
+  subroutine add_mat(a,b,c)
+    type(mat), intent(in) :: a,b
+    type(mat), intent(inout) :: c
+    logical :: real
+    integer(i4b) :: m,n
+    call check(a%allocated,'add_mat','a not allocated')
+    call check(b%allocated,'add_mat','b not allocated')
+    call check(c%allocated,'add_mat','c not allocated')    
+    m = a%m
+    n = a%n
+    call check(b%m == m,'add_mat','row dimensions of a and b differ')
+    call check(b%n == n,'add_mat','column dimensions of a and b differ')
+    call check(c%m == m,'add_mat','row dimensions of a and c differ')
+    call check(c%n == n,'add_mat','column dimensions of a and c differ')
+    real = a%real
+    call check(real .eqv. b%real,'add_mat','a and b of different types')
+    call check(real .eqv. c%real,'add_mat','a and c of different types')
+    if(real) then
+       c%elem_r = a%elem_r + b%elem_r
+    else
+       c%elem_c = a%elem_c + b%elem_c
+    end if
+    return
+  end subroutine add_mat
+
+
+  subroutine add_bmat(a,b,c)
+    type(bmat), intent(in) :: a,b
+    type(bmat), intent(inout) :: c
+    integer(i4b) :: kl,ku
+    kl = a%kl
+    ku = b%ku
+    call check(b%kl == kl,'add_bmat','a and b have different lower bandwidths')
+    call check(b%ku == ku,'add_bmat','a and b have different upper bandwidths')    
+    call check(c%kl == kl,'add_bmat','a and c have different lower bandwidths')
+    call check(c%ku == ku,'add_bmat','a and c have different upper bandwidths')
+    call add(a%mat,b%mat,c%mat)
+    return
+  end subroutine add_bmat
+  
+
+  subroutine add_hbmat(a,b,c)
+    type(hbmat), intent(in) :: a,b
+    type(hbmat), intent(inout) :: c
+    integer(i4b) :: kd
+    kd = a%kd
+    call check(b%kd == kd,'add_hbmat','a and b have different bandwidths')
+    call check(c%kd == kd,'add_hbmat','a and c have different bandwidths')
+    call add(a%mat,b%mat,c%mat)    
+    return
+  end subroutine add_hbmat
+  
+
   
 end module module_LAPACK
