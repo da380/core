@@ -18,15 +18,16 @@
   x2 = 1.0_dp
   dx = 0.001_dp
   mesh = build_mesh_1D(ngll,x1,x2,dx)
-!  call mesh%set_dirichlet()
+  call mesh%set_dirichlet()
   call build_boolean_scalar_1D(mesh,ibool,ndim)
-
+  print *, ndim
+  
   ! build the system matrix
   call a%band(ngll-1)
   call a%allocate(ndim,ndim)
   call build_laplace_matrix_1D(mesh,ibool,a)
-  l = 100
-  call build_laplace_matrix_spherical(mesh,ibool,l,a)
+  !  l = 100
+  !call build_laplace_matrix_spherical(mesh,ibool,l,a)
   call a%fac()
 
   
@@ -38,7 +39,7 @@
   call build_gaussian_force_1D(mesh,ibool,xs,sig,amp,b)
   call a%bsub(b)
   
-
+ 
   ! write the solution
   open(newunit = io,file='test_SEM_1D.out')
   do ispec = 1,mesh%nspec
