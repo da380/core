@@ -3,7 +3,6 @@ module module_SEM_1D
   use module_constants
   use module_error
   use module_util
-  use module_LAPACK
   use module_quadrature
   use module_special_functions  
   implicit none
@@ -27,7 +26,7 @@ module module_SEM_1D
      procedure :: set_left_dirichlet => set_dirichlet_left_mesh_1D
      procedure :: set_left_neumann => set_neumann_left_mesh_1D
      procedure :: set_right_dirichlet => set_dirichlet_right_mesh_1D
-     procedure :: set_right_neumann => set_neumann_right_mesh_1D
+     procedure :: set_right_neumann => set_neumann_right_mesh_1D     
   end type mesh_1D
 
   interface build_mesh_1D
@@ -209,10 +208,11 @@ contains
   end subroutine set_neumann_right_mesh_1D
 
 
-  subroutine build_boolean_scalar_1D(mesh,ibool,ndim)
+  subroutine build_boolean_scalar_1D(mesh,ibool,n,kd)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(inout), allocatable :: ibool
-    integer(i4b), intent(out), optional :: ndim
+    integer(i4b), intent(out), optional :: n
+    integer(i4b), intent(out), optional :: kd
     integer(i4b) :: ispec,nspec,inode,ngll,count
     nspec = mesh%nspec
     ngll  = mesh%ngll
@@ -231,7 +231,8 @@ contains
        count = count-1
     end do
     if(mesh%right_dirichlet) ibool(ngll,nspec) = 0
-    if(present(ndim)) ndim = maxval(ibool)
+    if(present(n)) n = maxval(ibool)
+    if(present(kd)) kd = ngll-1
     return
   end subroutine build_boolean_scalar_1D
 
@@ -240,31 +241,35 @@ contains
   !                   routines for the laplace equation in 1D                !
   !==========================================================================!
 
+
+  
   
   subroutine build_mass_matrix_1D(mesh,ibool,a)
+    ! returns mass matrix for Laplace's equation using banded symmetric format
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    class(mat), intent(inout) ::  a
-    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
-    real(dp) :: jacl,ijacl,tmp
+    real(dp), dimension(:,:), intent(out) :: a
+    integer(i4b) :: ispec,inode,n,ld,kd,i,k
+    real(dp) :: jacl,tmp
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
               jac   => mesh%jac,   &
               rho   => mesh%rho,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      ndim = maxval(ibool)
-      call check(a%allocated,'build_mass_matrix_1D','matrix not allocated')
-      call check(a%m == ndim,'build_mass_matrix_1D','matrix wrong row dimension')
-      call check(a%n == ndim,'build_mass_matrix_1D','matrix wrong column dimension')
+      n = maxval(ibool)
+      kd = ngll-1
+      ld = kd+1
+      call check(size(a,1) == ld,'build_mass_matrix_1D','reduced row dimension wrong')
+      call check(size(a,2) == n,'build_mass_matrix_1D','column dimension wrong')
       do ispec = 1,nspec
          jacl  = jac(ispec)
-         ijacl = 1.0_dp/jacl
          do inode = 1,ngll
             i = ibool(inode,ispec)
             if(i == 0) cycle
-            tmp = rho(inode,ispec)*w(inode)*jacl            
-            call a%inc(i,i,tmp)
+            tmp = rho(inode,ispec)*w(inode)*jacl
+            k = kd+1
+            a(k,i) = a(k,i) + tmp
          end do
       end do
     end associate
@@ -273,10 +278,11 @@ contains
   
   
   subroutine build_laplace_matrix_1D(mesh,ibool,a)
+    ! returns stiffness matrix for Laplace's equation in banded symmetric format
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    class(mat), intent(inout) ::  a
-    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
+    real(dp), dimension(:,:), intent(out) :: a
+    integer(i4b) :: ispec,inode,jnode,knode,n,ld,kd,i,j,k
     real(dp) :: ijacl,tmp,fac
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
@@ -284,10 +290,11 @@ contains
               mu    => mesh%mu,    &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      ndim = maxval(ibool)
-      call check(a%allocated,'build_laplace_matrix_1D','matrix not allocated')
-      call check(a%m == ndim,'build_laplace_matrix_1D','matrix wrong row dimension')
-      call check(a%n == ndim,'build_laplace_matrix_1D','matrix wrong column dimension')
+      n = maxval(ibool)
+      kd = ngll-1
+      ld = kd+1
+      call check(size(a,1) == ld,'build_mass_matrix_1D','reduced row dimension wrong')
+      call check(size(a,2) == n,'build_mass_matrix_1D','column dimension wrong')
       do ispec = 1,nspec
          ijacl  = 1.0_dp/jac(ispec)
          do inode = 1,ngll
@@ -303,7 +310,8 @@ contains
                             * hp(knode,jnode) &
                             * w(knode)*ijacl
                end do
-               call a%inc_sym(i,j,tmp)
+               k = kd+1+i-j
+               a(k,j) = a(k,j) + tmp
             end do            
          end do
       end do
@@ -317,84 +325,84 @@ contains
   !==========================================================================!
 
 
-  subroutine build_mass_matrix_spherical(mesh,ibool,a)
-    class(mesh_1D), intent(in) :: mesh
-    integer(i4b), dimension(:,:), intent(in) :: ibool
-    class(mat), intent(inout) ::  a
-    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
-    real(dp) :: jacl,ijacl,tmp
-    associate(nspec => mesh%nspec, & 
-              ngll  => mesh%ngll,  &
-              jac   => mesh%jac,   &
-              rho   => mesh%rho,   &
-              r     => mesh%x,     &
-              w     => mesh%w,     &
-              hp    => mesh%hp)
-      ndim = maxval(ibool)
-      call check(a%allocated,'build_mass_matrix_spherical','matrix not allocated')
-      call check(a%m == ndim,'build_mass_matrix_spherical','matrix wrong row dimension')
-      call check(a%n == ndim,'build_mass_matrix_spherical','matrix wrong column dimension')
-      do ispec = 1,nspec
-         jacl  = jac(ispec)
-         ijacl = 1.0_dp/jacl
-         do inode = 1,ngll
-            i = ibool(inode,ispec)
-            if(i == 0) cycle
-            tmp = rho(inode,ispec)*r(inode,ispec)**2*w(inode)*jacl            
-            call a%inc(i,i,tmp)
-         end do
-      end do
-    end associate
-    return
-  end subroutine build_mass_matrix_spherical
+!  subroutine build_mass_matrix_spherical(mesh,ibool,a)
+!    class(mesh_1D), intent(in) :: mesh
+!    integer(i4b), dimension(:,:), intent(in) :: ibool
+!    class(mat), intent(inout) ::  a
+!    integer(i4b) :: ispec,inode,jnode,knode,n,ldb,kd,ldbb,kdb,i,j
+!    real(dp) :: jacl,ijacl,tmp
+!    associate(nspec => mesh%nspec, & 
+!              ngll  => mesh%ngll,  &
+!              jac   => mesh%jac,   &
+!              rho   => mesh%rho,   &
+!              r     => mesh%x,     &
+!              w     => mesh%w,     &
+!              hp    => mesh%hp)
+!      n = maxval(ibool)
+!      call check(a%allocated,'build_mass_matrix_spherical','matrix not allocated')
+!      call check(a%m == n,'build_mass_matrix_spherical','matrix wrong row dimension')
+!      call check(a%n == n,'build_mass_matrix_spherical','matrix wrong column dimension')
+!      do ispec = 1,nspec
+!         jacl  = jac(ispec)
+!         ijacl = 1.0_dp/jacl
+!         do inode = 1,ngll
+!            i = ibool(inode,ispec)
+!            if(i == 0) cycle
+!            tmp = rho(inode,ispec)*r(inode,ispec)**2*w(inode)*jacl            
+!            call a%inc(i,i,tmp)
+!         end do
+!      end do
+!    end associate
+!    return
+!  end subroutine build_mass_matrix_spherical
   
 
-  subroutine build_laplace_matrix_spherical(mesh,ibool,l,a)
-    class(mesh_1D), intent(in) :: mesh
-    integer(i4b), dimension(:,:), intent(in) :: ibool
-    integer(i4b), intent(in) :: l
-    class(mat), intent(inout) ::  a
-    integer(i4b) :: ispec,inode,jnode,knode,ndim,ldb,kd,ldbb,kdb,i,j
-    real(dp) :: jacl,ijacl,tmp,fac
-    associate(nspec => mesh%nspec, & 
-              ngll  => mesh%ngll,  &
-              jac   => mesh%jac,   &
-              mu    => mesh%mu,    &
-              r     => mesh%x,     &
-              w     => mesh%w,     &
-              hp    => mesh%hp)
-      ndim = maxval(ibool)
-      call check(a%allocated,'build_laplace_matrix_spherical','matrix not allocated')
-      call check(a%m == ndim,'build_laplace_matrix_spherical','matrix wrong row dimension')
-      call check(a%n == ndim,'build_laplace_matrix_spherical','matrix wrong column dimension')
-      do ispec = 1,nspec
-         jacl = jac(ispec)
-         ijacl  = 1.0_dp/jacl
-         do inode = 1,ngll
-            i = ibool(inode,ispec)
-            if(i == 0) cycle
-            tmp =   l*(l+1)  &
-                  * mu(inode,ispec) &
-                  * w(inode)*jacl
-            call a%inc_sym(i,i,tmp)
-            do jnode = inode,ngll
-               j = ibool(jnode,ispec)
-               if(j == 0) cycle
-               tmp = 0.0_dp
-               do knode = 1,ngll
-                  tmp = tmp + mu(knode,ispec)   &
-                            * r(knode,ispec)**2 & 
-                            * hp(knode,inode)   &
-                            * hp(knode,jnode)   &
-                            * w(knode)*ijacl
-               end do
-               call a%inc_sym(i,j,tmp)
-            end do            
-         end do
-      end do
-    end associate
-    return
-  end subroutine build_laplace_matrix_spherical
+!  subroutine build_laplace_matrix_spherical(mesh,ibool,l,a)
+!    class(mesh_1D), intent(in) :: mesh
+!    integer(i4b), dimension(:,:), intent(in) :: ibool
+!    integer(i4b), intent(in) :: l
+!    class(mat), intent(inout) ::  a
+!    integer(i4b) :: ispec,inode,jnode,knode,n,ldb,kd,ldbb,kdb,i,j
+!    real(dp) :: jacl,ijacl,tmp,fac
+!    associate(nspec => mesh%nspec, & 
+!              ngll  => mesh%ngll,  &
+!              jac   => mesh%jac,   &
+!              mu    => mesh%mu,    &
+!              r     => mesh%x,     &
+!              w     => mesh%w,     &
+!              hp    => mesh%hp)
+!      n = maxval(ibool)
+!      call check(a%allocated,'build_laplace_matrix_spherical','matrix not allocated')
+!      call check(a%m == n,'build_laplace_matrix_spherical','matrix wrong row dimension')
+!      call check(a%n == n,'build_laplace_matrix_spherical','matrix wrong column dimension')
+!      do ispec = 1,nspec
+!         jacl = jac(ispec)
+!         ijacl  = 1.0_dp/jacl
+!         do inode = 1,ngll
+!            i = ibool(inode,ispec)
+!            if(i == 0) cycle
+!            tmp =   l*(l+1)  &
+!                  * mu(inode,ispec) &
+!                  * w(inode)*jacl
+!            call a%inc_sym(i,i,tmp)
+!            do jnode = inode,ngll
+!               j = ibool(jnode,ispec)
+!               if(j == 0) cycle
+!               tmp = 0.0_dp
+!               do knode = 1,ngll
+!                  tmp = tmp + mu(knode,ispec)   &
+!                            * r(knode,ispec)**2 & 
+!                            * hp(knode,inode)   &
+!                            * hp(knode,jnode)   &
+!                            * w(knode)*ijacl
+!               end do
+!               call a%inc_sym(i,j,tmp)
+!            end do            
+!         end do
+!      end do
+!    end associate
+!    return
+!  end subroutine build_laplace_matrix_spherical
 
   
 
@@ -407,8 +415,8 @@ contains
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
     real(dp), intent(in) :: xs
-    class(mat), intent(inout) ::  a    
-    integer(i4b) :: ndim,i,inode,ispec
+    real(dp), dimension(:), intent(inout) :: a
+    integer(i4b) :: n,i,inode,ispec
     real(dp), dimension(mesh%ngll) :: h
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
@@ -416,10 +424,8 @@ contains
               w     => mesh%w,     &
               x     => mesh%x,     & 
               hp    => mesh%hp)
-      ndim = maxval(ibool)      
-      call check(a%allocated,'build_delta_force_matrix_1D','matrix not allocated')
-      call check(a%m == ndim,'build_delta_force_matrix_1D','matrix wrong row dimension')
-      call check(a%n == 1,'build_delta_force_matrix_1D','matrix wrong column dimension')
+      n = maxval(ibool)      
+      call check(size(a) == n,'build_delta_force_matrix_1D','a has wrong dimension')
       call check(xs >= x(1,1) .and. xs <= x(ngll,nspec),'build_delta_force_matrix_1D','force location out of range')
       i = bisect_list(reshape(x,(/nspec*ngll/)),xs)
       ispec = i/mesh%ngll+1
@@ -427,7 +433,7 @@ contains
       do inode = 1,ngll
          i = ibool(inode,ispec)
          if(i == 0) cycle
-         call a%inc(i,1,h(inode))
+         a(i) = a(i) + h(inode)
       end do
     end associate
     return
@@ -438,8 +444,8 @@ contains
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
     real(dp), intent(in) :: xs,sig,amp
-    class(mat), intent(inout) ::  a    
-    integer(i4b) :: ndim,i,inode,ispec
+    real(dp), dimension(:), intent(inout) :: a
+    integer(i4b) :: n,i,inode,ispec
     real(dp) :: tmp,jacl
     real(dp), dimension(mesh%ngll) :: h
     associate(nspec => mesh%nspec, & 
@@ -448,10 +454,8 @@ contains
               w     => mesh%w,     &
               x     => mesh%x,     & 
               hp    => mesh%hp)
-      ndim = maxval(ibool)      
-      call check(a%allocated,'build_delta_force_matrix_1D','matrix not allocated')
-      call check(a%m == ndim,'build_delta_force_matrix_1D','matrix wrong row dimension')
-      call check(a%n == 1,'build_delta_force_matrix_1D','matrix wrong column dimension')
+      n = maxval(ibool)      
+      call check(size(a) == n,'build_delta_force_matrix_1D','a has wrong dimension')
       do ispec = 1,nspec
          jacl = jac(ispec)
          do inode = 1,ngll
@@ -459,7 +463,7 @@ contains
             if(i == 0) cycle
             tmp = -0.5_dp*(x(inode,ispec)-xs)**2/sig**2
             tmp = amp*exp(tmp)*w(inode)*jacl
-            call a%inc(i,1,tmp)
+            a(i) = a(i) + tmp
          end do
       end do
     end associate

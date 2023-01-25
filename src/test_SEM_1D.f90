@@ -1,58 +1,55 @@
   program test_SEM_1D
 
   use module_constants
-  use module_LAPACK
   use module_SEM_1D
+  use module_LAPACK
   implicit none
 
-  integer(i4b) :: ngll,ndim,io,inode,ispec,i,l
+  integer(i4b) :: ngll,n,kd,io,inode,ispec,i,l,j,k
   integer(i4b), dimension(:,:), allocatable :: ibool
   real(dp) :: x,x1,x2,dx,xs,u,sig,amp,lambda
+  real(dp), dimension(:), allocatable :: b
+  real(dp), dimension(:,:), allocatable :: a
   type(mesh_1D) :: mesh
-  type(hbmat) :: a,ac
-  type(mat) :: b
+
+
 
   ! build the mesh and boolean array
   ngll = 5
   x1 = 0.0_dp
   x2 = 1.0_dp
-  dx = 0.001_dp
+  dx = 0.01_dp
   mesh = build_mesh_1D(ngll,x1,x2,dx)
   call mesh%set_dirichlet()
-  call build_boolean_scalar_1D(mesh,ibool,ndim)
-  print *, ndim
-  
-  ! build the system matrix
-  call a%band(ngll-1)
-  call a%allocate(ndim,ndim)
-  call build_laplace_matrix_1D(mesh,ibool,a)
-  !  l = 100
-  !call build_laplace_matrix_spherical(mesh,ibool,l,a)
-  call a%fac()
+  call build_boolean_scalar_1D(mesh,ibool,n=n,kd=kd)
 
   
+  ! build the system matrix
+  call allocate_matrix_bs(n,kd,a)
+  call build_laplace_matrix_1D(mesh,ibool,a)
+  call cholesky_matrix_bs(kd,a)
+  
   ! build the force and solve
-  call b%allocate(ndim,1)
-  xs = 0.5_dp
+  xs = 0.4_dp
   sig = 0.01_dp
   amp = 1.0_dp
+  call allocate_vector(n,b)
   call build_gaussian_force_1D(mesh,ibool,xs,sig,amp,b)
-  call a%bsub(b)
+  call cholesky_backsub_matrix_bs(kd,a,b)
   
- 
-  ! write the solution
+ ! write the solution
   open(newunit = io,file='test_SEM_1D.out')
   do ispec = 1,mesh%nspec
      do inode = 1,mesh%ngll
         i = ibool(inode,ispec)
         if(i /= 0) then
-           call b%get(i,1,u)
+           u = b(i)
         else
            u = 0.0_dp
         end if
         write(io,*) mesh%x(inode,ispec),u
      end do
-  end do
+       end do
   close(io)
   
 
