@@ -7,6 +7,7 @@
 
   integer(i4b) :: ngll,n,kd,io,inode,ispec,i,l,j,k
   integer(i4b), dimension(:,:), allocatable :: ibool
+  integer(i4b), dimension(:), allocatable :: ipiv
   real(dp) :: x,x1,x2,dx,xs,u,sig,amp,lambda
   real(dp), dimension(:), allocatable :: b
   real(dp), dimension(:,:), allocatable :: a
@@ -18,16 +19,19 @@
   ngll = 5
   x1 = 0.0_dp
   x2 = 1.0_dp
-  dx = 0.01_dp
+  dx = 0.001_dp
   mesh = build_mesh_1D(ngll,x1,x2,dx)
   call mesh%set_dirichlet()
-  call build_boolean_scalar_1D(mesh,ibool,n=n,kd=kd)
+  call build_boolean_scalar_1D(mesh,ibool,n=n)
 
   
   ! build the system matrix
+  kd = ngll-1  
   call allocate_matrix_bs(n,kd,a)
-  call build_laplace_matrix_1D(mesh,ibool,a)
-  call cholesky_matrix_bs(kd,a)
+  call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,a)
+
+  ! factorise the matrix
+  call factorise_matrix_bs(n,kd,a)
   
   ! build the force and solve
   xs = 0.4_dp
@@ -35,7 +39,7 @@
   amp = 1.0_dp
   call allocate_vector(n,b)
   call build_gaussian_force_1D(mesh,ibool,xs,sig,amp,b)
-  call cholesky_backsub_matrix_bs(kd,a,b)
+  call backsub_matrix_bs(n,kd,a,b)
   
  ! write the solution
   open(newunit = io,file='test_SEM_1D.out')

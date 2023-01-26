@@ -4,7 +4,8 @@ module module_SEM_1D
   use module_error
   use module_util
   use module_quadrature
-  use module_special_functions  
+  use module_special_functions
+  use module_LAPACK
   implicit none
 
   type mesh_1D
@@ -208,11 +209,10 @@ contains
   end subroutine set_neumann_right_mesh_1D
 
 
-  subroutine build_boolean_scalar_1D(mesh,ibool,n,kd)
+  subroutine build_boolean_scalar_1D(mesh,ibool,n)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(inout), allocatable :: ibool
     integer(i4b), intent(out), optional :: n
-    integer(i4b), intent(out), optional :: kd
     integer(i4b) :: ispec,nspec,inode,ngll,count
     nspec = mesh%nspec
     ngll  = mesh%ngll
@@ -232,7 +232,6 @@ contains
     end do
     if(mesh%right_dirichlet) ibool(ngll,nspec) = 0
     if(present(n)) n = maxval(ibool)
-    if(present(kd)) kd = ngll-1
     return
   end subroutine build_boolean_scalar_1D
 
@@ -241,15 +240,57 @@ contains
   !                   routines for the laplace equation in 1D                !
   !==========================================================================!
 
-
-  
-  
-  subroutine build_mass_matrix_1D(mesh,ibool,a)
-    ! returns mass matrix for Laplace's equation using banded symmetric format
+  subroutine build_laplace_mass_matrix_1D(mesh,ibool,n,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    real(dp), dimension(:,:), intent(out) :: a
-    integer(i4b) :: ispec,inode,n,ld,kd,i,k
+    integer(i4b), intent(in) :: n
+    real(dp), dimension(n,n), intent(out) :: a
+    integer(i4b) :: kd
+    real(dp), dimension(:,:), allocatable :: as
+    kd = 0
+    call allocate_matrix_bs(n,kd,as)
+    call build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,as)
+    call matrix_bs_to_matrix(n,kd,as,a)
+    return
+  end subroutine build_laplace_mass_matrix_1D
+
+
+  subroutine build_laplace_mass_matrix_1D_s(mesh,ibool,n,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    integer(i4b), intent(in) :: n
+    real(dp), dimension(n,n), intent(out) :: a
+    integer(i4b) :: kd
+    real(dp), dimension(:,:), allocatable :: as
+    kd = 0
+    call allocate_matrix_bs(n,kd,as)
+    call build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,as)
+    call matrix_bs_to_matrix_s(n,kd,as,a)
+    return
+  end subroutine build_laplace_mass_matrix_1D_s
+
+
+  subroutine build_laplace_mass_matrix_1D_b(mesh,ibool,n,kl,ku,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    integer(i4b), intent(in) :: n,kl,ku
+    real(dp), dimension(2*kl+ku+1,n), intent(out) :: a
+    integer(i4b) :: kd
+    real(dp), dimension(:,:), allocatable :: as
+    kd = 0
+    call allocate_matrix_bs(n,kd,as)
+    call build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,as)
+    call matrix_bs_to_matrix_b(n,kd,as,kl,ku,a)
+    return
+  end subroutine build_laplace_mass_matrix_1D_b
+
+  
+  subroutine build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    integer(i4b), intent(in) :: n,kd
+    real(dp), dimension(kd+1,n), intent(out) :: a
+    integer(i4b) :: ispec,inode,i,k
     real(dp) :: jacl,tmp
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
@@ -257,32 +298,76 @@ contains
               rho   => mesh%rho,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      n = maxval(ibool)
-      kd = ngll-1
-      ld = kd+1
-      call check(size(a,1) == ld,'build_mass_matrix_1D','reduced row dimension wrong')
-      call check(size(a,2) == n,'build_mass_matrix_1D','column dimension wrong')
+      call check(n == maxval(ibool),'build_mass_matrix_1D','row dimension is wrong')      
+      call check(kd >= 0,'build_mass_matrix_1D','bandwidth is too small')
       do ispec = 1,nspec
          jacl  = jac(ispec)
          do inode = 1,ngll
             i = ibool(inode,ispec)
             if(i == 0) cycle
             tmp = rho(inode,ispec)*w(inode)*jacl
-            k = kd+1
+            k = row_index_matrix_bs(kd,i,i)
             a(k,i) = a(k,i) + tmp
          end do
       end do
     end associate
     return
-  end subroutine build_mass_matrix_1D
-  
-  
-  subroutine build_laplace_matrix_1D(mesh,ibool,a)
-    ! returns stiffness matrix for Laplace's equation in banded symmetric format
+  end subroutine build_laplace_mass_matrix_1D_bs
+
+
+
+  subroutine build_laplace_stiffness_matrix_1D(mesh,ibool,n,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    real(dp), dimension(:,:), intent(out) :: a
-    integer(i4b) :: ispec,inode,jnode,knode,n,ld,kd,i,j,k
+    integer(i4b), intent(in) :: n
+    real(dp), dimension(n,n), intent(out) :: a
+    integer(i4b) :: kd
+    real(dp), dimension(:,:), allocatable :: as
+    kd = mesh%ngll-1
+    call allocate_matrix_bs(n,kd,as)
+    call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,as)
+    call matrix_bs_to_matrix(n,kd,as,a)
+    return
+  end subroutine build_laplace_stiffness_matrix_1D
+
+
+  subroutine build_laplace_stiffness_matrix_1D_s(mesh,ibool,n,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    integer(i4b), intent(in) :: n
+    real(dp), dimension(n,n), intent(out) :: a
+    integer(i4b) :: kd
+    real(dp), dimension(:,:), allocatable :: as
+    kd = mesh%ngll-1
+    call allocate_matrix_bs(n,kd,as)
+    call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,as)
+    call matrix_bs_to_matrix_s(n,kd,as,a)
+    return
+  end subroutine build_laplace_stiffness_matrix_1D_s
+
+
+  subroutine build_laplace_stiffness_matrix_1D_b(mesh,ibool,n,kl,ku,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    integer(i4b), intent(in) :: n,kl,ku
+    real(dp), dimension(2*kl+ku+1,n), intent(out) :: a
+    integer(i4b) :: kd
+    real(dp), dimension(:,:), allocatable :: as
+    kd = mesh%ngll-1
+    call allocate_matrix_bs(n,kd,as)
+    call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,as)
+    call matrix_bs_to_matrix_b(n,kd,as,kl,ku,a)
+    return
+  end subroutine build_laplace_stiffness_matrix_1D_b
+
+  
+  
+  subroutine build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,a)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    integer(i4b), intent(in) :: n,kd
+    real(dp), dimension(kd+1,n), intent(out) :: a
+    integer(i4b) :: ispec,inode,jnode,knode,i,j,k
     real(dp) :: ijacl,tmp,fac
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
@@ -290,11 +375,8 @@ contains
               mu    => mesh%mu,    &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      n = maxval(ibool)
-      kd = ngll-1
-      ld = kd+1
-      call check(size(a,1) == ld,'build_mass_matrix_1D','reduced row dimension wrong')
-      call check(size(a,2) == n,'build_mass_matrix_1D','column dimension wrong')
+      call check(n == maxval(ibool),'build_stiffness_matrix_1D','row dimension is wrong')      
+      call check(kd >= ngll-1,'build_stiffness_matrix_1D','bandwidth is too small')
       do ispec = 1,nspec
          ijacl  = 1.0_dp/jac(ispec)
          do inode = 1,ngll
@@ -310,16 +392,17 @@ contains
                             * hp(knode,jnode) &
                             * w(knode)*ijacl
                end do
-               k = kd+1+i-j
+               k = row_index_matrix_bs(kd,i,j)
                a(k,j) = a(k,j) + tmp
-            end do            
+            end do
          end do
       end do
     end associate
     return
-  end subroutine build_laplace_matrix_1D
+  end subroutine build_laplace_stiffness_matrix_1D_bs
 
 
+  
   !==========================================================================!
   !   routines for radial part of Laplace equation in spherical coordinates  !
   !==========================================================================!
