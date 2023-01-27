@@ -27,11 +27,11 @@
   
   ! build the system matrix
   kd = ngll-1  
-  call allocate_matrix_bs(n,kd,a)
-  call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,a)
+  call allocate_matrix_bhp(n,kd,a)
+  call build_laplace_stiffness_matrix_1D_bhp(mesh,ibool,n,kd,a)
 
   ! factorise the matrix
-  call factorise_matrix_bs(n,kd,a)
+  call factorise_matrix_bhp(n,kd,a)
   
   ! build the force and solve
   xs = 0.4_dp
@@ -39,7 +39,7 @@
   amp = 1.0_dp
   call allocate_vector(n,b)
   call build_gaussian_force_1D(mesh,ibool,xs,sig,amp,b)
-  call backsub_matrix_bs(n,kd,a,b)
+  call backsub_matrix_bhp(n,kd,a,b)
   
  ! write the solution
   open(newunit = io,file='test_SEM_1D.out')

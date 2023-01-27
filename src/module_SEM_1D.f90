@@ -248,9 +248,9 @@ contains
     integer(i4b) :: kd
     real(dp), dimension(:,:), allocatable :: as
     kd = 0
-    call allocate_matrix_bs(n,kd,as)
-    call build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,as)
-    call matrix_bs_to_matrix(n,kd,as,a)
+    call allocate_matrix_bhp(n,kd,as)
+    call build_laplace_mass_matrix_1D_bhp(mesh,ibool,n,kd,as)
+    call matrix_bhp_to_matrix(n,kd,as,a)
     return
   end subroutine build_laplace_mass_matrix_1D
 
@@ -263,9 +263,9 @@ contains
     integer(i4b) :: kd
     real(dp), dimension(:,:), allocatable :: as
     kd = 0
-    call allocate_matrix_bs(n,kd,as)
-    call build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,as)
-    call matrix_bs_to_matrix_s(n,kd,as,a)
+    call allocate_matrix_bhp(n,kd,as)
+    call build_laplace_mass_matrix_1D_bhp(mesh,ibool,n,kd,as)
+    call matrix_bhp_to_matrix_s(n,kd,as,a)
     return
   end subroutine build_laplace_mass_matrix_1D_s
 
@@ -278,14 +278,14 @@ contains
     integer(i4b) :: kd
     real(dp), dimension(:,:), allocatable :: as
     kd = 0
-    call allocate_matrix_bs(n,kd,as)
-    call build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,as)
-    call matrix_bs_to_matrix_b(n,kd,as,kl,ku,a)
+    call allocate_matrix_bhp(n,kd,as)
+    call build_laplace_mass_matrix_1D_bhp(mesh,ibool,n,kd,as)
+    call matrix_bhp_to_matrix_b(n,kd,as,kl,ku,a)
     return
   end subroutine build_laplace_mass_matrix_1D_b
 
   
-  subroutine build_laplace_mass_matrix_1D_bs(mesh,ibool,n,kd,a)
+  subroutine build_laplace_mass_matrix_1D_bhp(mesh,ibool,n,kd,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
     integer(i4b), intent(in) :: n,kd
@@ -306,13 +306,13 @@ contains
             i = ibool(inode,ispec)
             if(i == 0) cycle
             tmp = rho(inode,ispec)*w(inode)*jacl
-            k = row_index_matrix_bs(kd,i,i)
+            k = row_index_matrix_bhp(kd,i,i)
             a(k,i) = a(k,i) + tmp
          end do
       end do
     end associate
     return
-  end subroutine build_laplace_mass_matrix_1D_bs
+  end subroutine build_laplace_mass_matrix_1D_bhp
 
 
 
@@ -324,9 +324,9 @@ contains
     integer(i4b) :: kd
     real(dp), dimension(:,:), allocatable :: as
     kd = mesh%ngll-1
-    call allocate_matrix_bs(n,kd,as)
-    call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,as)
-    call matrix_bs_to_matrix(n,kd,as,a)
+    call allocate_matrix_bhp(n,kd,as)
+    call build_laplace_stiffness_matrix_1D_bhp(mesh,ibool,n,kd,as)
+    call matrix_bhp_to_matrix(n,kd,as,a)
     return
   end subroutine build_laplace_stiffness_matrix_1D
 
@@ -339,9 +339,9 @@ contains
     integer(i4b) :: kd
     real(dp), dimension(:,:), allocatable :: as
     kd = mesh%ngll-1
-    call allocate_matrix_bs(n,kd,as)
-    call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,as)
-    call matrix_bs_to_matrix_s(n,kd,as,a)
+    call allocate_matrix_bhp(n,kd,as)
+    call build_laplace_stiffness_matrix_1D_bhp(mesh,ibool,n,kd,as)
+    call matrix_bhp_to_matrix_s(n,kd,as,a)
     return
   end subroutine build_laplace_stiffness_matrix_1D_s
 
@@ -354,15 +354,15 @@ contains
     integer(i4b) :: kd
     real(dp), dimension(:,:), allocatable :: as
     kd = mesh%ngll-1
-    call allocate_matrix_bs(n,kd,as)
-    call build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,as)
-    call matrix_bs_to_matrix_b(n,kd,as,kl,ku,a)
+    call allocate_matrix_bhp(n,kd,as)
+    call build_laplace_stiffness_matrix_1D_bhp(mesh,ibool,n,kd,as)
+    call matrix_bhp_to_matrix_b(n,kd,as,kl,ku,a)
     return
   end subroutine build_laplace_stiffness_matrix_1D_b
 
   
   
-  subroutine build_laplace_stiffness_matrix_1D_bs(mesh,ibool,n,kd,a)
+  subroutine build_laplace_stiffness_matrix_1D_bhp(mesh,ibool,n,kd,a)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
     integer(i4b), intent(in) :: n,kd
@@ -392,14 +392,14 @@ contains
                             * hp(knode,jnode) &
                             * w(knode)*ijacl
                end do
-               k = row_index_matrix_bs(kd,i,j)
+               k = row_index_matrix_bhp(kd,i,j)
                a(k,j) = a(k,j) + tmp
             end do
          end do
       end do
     end associate
     return
-  end subroutine build_laplace_stiffness_matrix_1D_bs
+  end subroutine build_laplace_stiffness_matrix_1D_bhp
 
 
   
