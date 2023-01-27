@@ -10,7 +10,7 @@
   integer(i4b), dimension(:), allocatable :: ipiv
   real(dp) :: x,x1,x2,dx,xs,u,sig,amp,lambda
   real(dp), dimension(:), allocatable :: b
-  real(dp), dimension(:,:), allocatable :: a
+  type(MatLAP) :: a
   type(mesh_1D) :: mesh
 
 
@@ -19,27 +19,27 @@
   ngll = 5
   x1 = 0.0_dp
   x2 = 1.0_dp
-  dx = 0.001_dp
+  dx = 0.01_dp
   mesh = build_mesh_1D(ngll,x1,x2,dx)
   call mesh%set_dirichlet()
   call build_boolean_scalar_1D(mesh,ibool,n=n)
 
   
   ! build the system matrix
-  kd = ngll-1  
-  call allocate_matrix_bhp(n,kd,a)
-  call build_laplace_stiffness_matrix_1D_bhp(mesh,ibool,n,kd,a)
-
+  call a%allocate('bsp',n,n,kd = ngll-1)
+  call build_laplace_stiffness_matrix_1D(mesh,ibool,a)
+  
   ! factorise the matrix
-  call factorise_matrix_bhp(n,kd,a)
+  call a%factor()
+
   
   ! build the force and solve
-  xs = 0.4_dp
+  call random_number(xs)
   sig = 0.01_dp
   amp = 1.0_dp
-  call allocate_vector(n,b)
+  allocate(b(n))
   call build_gaussian_force_1D(mesh,ibool,xs,sig,amp,b)
-  call backsub_matrix_bhp(n,kd,a,b)
+  call a%backsub(b)
   
  ! write the solution
   open(newunit = io,file='test_SEM_1D.out')
