@@ -7,8 +7,10 @@ program test_interp
   integer(i4b), parameter :: n = 100,m = 5*n
   integer(i4b) :: i,io
   real(dp) :: x1,x2,dx,xx
-  real(dp), dimension(n) :: x,f
-  class(interpolant_1D), allocatable :: g
+  real(dp), dimension(:), allocatable :: x,f
+  class(interpolant_1D), allocatable :: g,h
+
+  allocate(x(n),f(n))
   
   x1 = 0.0_dp
   x2 = 1.0_dp
@@ -20,20 +22,22 @@ program test_interp
      f(i) = sin(4*xx)
      xx = xx + dx
   end do
-
+  
   g = linear_interpolant_1D(x,f)
+  h = cubic_interpolant_1D(x,f)
 
-
+  
   open(newunit = io,file='test_interp.out')
   dx = (x2-x1)/(m-1)
   xx = x1
   do i = 1,n
-     write(io,*) xx,sin(4*xx)-g%evaluate(xx)
+     write(io,*) xx,sin(4*xx)-g%evaluate(xx),sin(4*xx)-h%evaluate(xx)
      xx = xx+dx
   end do
   close(io)
 
-
+  call g%deallocate()
+  call h%deallocate()
   
 !  use module_constants
 !  use module_interp
