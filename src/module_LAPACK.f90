@@ -4,6 +4,9 @@ module module_LAPACK
   use module_error
   implicit none
 
+
+  
+  
   type MatLAP
      !---------------------------------------------------------------------!
      !---------------------------------------------------------------------!
@@ -19,6 +22,7 @@ module module_LAPACK
      ! bhp = banded, hermitian, complex, positive-definite
      !---------------------------------------------------------------------!
      !---------------------------------------------------------------------!
+     private
      logical :: allocated = .false.
      logical :: factored = .false.
      character(len=:), allocatable :: type
@@ -34,6 +38,9 @@ module module_LAPACK
    contains
      procedure :: deallocate => deallocate_MatLAP
      procedure :: allocate   => allocate_MatLAP
+     procedure :: row_dim => row_dim_MatLAP
+     procedure :: col_dim => col_dim_MatLAP
+     procedure :: square => square_MatLAP
      procedure :: mirror_upper   => mirror_upper_MatLAP
      procedure :: set_value_MatLAP_r
      procedure :: set_value_MatLAP_c
@@ -59,6 +66,13 @@ module module_LAPACK
 contains
 
 
+  
+  !=====================================================================!
+  !                      routines for MatLAP type                       !
+  !=====================================================================!
+
+
+
   subroutine deallocate_MatLAP(self)
     class(MatLAP), intent(inout) :: self
     if(.not.self%allocated)  return
@@ -69,7 +83,6 @@ contains
     self%allocated = .false.
     return
   end subroutine deallocate_MatLAP
-
 
   subroutine allocate_MatLAP(self,type,m,n,kl,ku,kd)
     class(MatLAP), intent(inout) :: self
@@ -154,6 +167,27 @@ contains
     
     return
   end subroutine allocate_MatLAP
+
+
+  integer(i4b) function row_dim_MatLAP(self) result(m)
+    class(MatLAP), intent(in) :: self
+    m = self%m
+    return
+  end function row_dim_MatLAP
+
+
+  integer(i4b) function col_dim_MatLAP(self) result(n)
+    class(MatLAP), intent(in) :: self
+    n = self%n
+    return
+  end function col_dim_MatLAP
+
+  
+  logical function square_MatLAP(self) result(bool)
+    class(MatLAP), intent(in) :: self
+    bool = self%m == self%n
+    return
+  end function square_MatLAP
 
 
   subroutine mirror_upper_MatLAP(self)

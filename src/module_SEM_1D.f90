@@ -253,7 +253,7 @@ contains
               rho   => mesh%rho,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      call check(a%n == maxval(ibool),'build_mass_matrix_1D','row dimension is wrong')      
+      call check(a%row_dim() == maxval(ibool),'build_mass_matrix_1D','row dimension is wrong')      
       do ispec = 1,nspec
          jacl  = jac(ispec)
          do inode = 1,ngll
@@ -280,7 +280,7 @@ contains
               mu    => mesh%mu,    &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      call check(a%n == maxval(ibool),'build_stiffness_matrix_1D','row dimension is wrong')      
+      call check(a%row_dim() == maxval(ibool),'build_stiffness_matrix_1D','row dimension is wrong')      
       do ispec = 1,nspec
          ijacl  = 1.0_dp/jac(ispec)
          do inode = 1,ngll
