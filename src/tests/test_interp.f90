@@ -31,7 +31,7 @@ program test_interp
   dx = (x2-x1)/(m-1)
   xx = x1
   do i = 1,n
-     write(io,*) xx,sin(4*xx)-g%evaluate(xx),sin(4*xx)-h%evaluate(xx)
+     write(io,*) xx,sin(4*xx)-g%eval(xx),sin(4*xx)-h%eval(xx)
      xx = xx+dx
   end do
   close(io)
