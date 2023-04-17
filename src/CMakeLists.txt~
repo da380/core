@@ -1,10 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
-
-project(src)
+project(core)
 enable_language(Fortran)
-
-set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     set(dialect "-ffree-form -std=f2008 -fimplicit-none")
@@ -17,29 +14,10 @@ endif()
 if(CMAKE_Fortran_COMPILER_ID MATCHES "PGI")
     set(dialect "-Mfreeform -Mdclchk -Mstandard -Mallocatable=03")
     set(bounds "-C")
-  endif()
-
-
+endif()
 
 set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} ${bounds}")
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${dialect}")
-
-
-find_package(LAPACK REQUIRED)
-find_package(FFTW3 COMPONENTS double single threads REQUIRED)
-include_directories(${FFTW3_INCLUDE_DIR})
-find_package(NETCDFF REQUIRED)
-include_directories(${NETCDFF_INCLUDE_DIR})
-
-
-
-
-add_executable(test ${CMAKE_SOURCE_DIR}/test/test.f90)
-target_link_libraries(main PRIVATE ${LAPACK_LIBRARIES})
-target_link_libraries(main PRIVATE ${FFTW3_LIBRARIES})
-target_link_libraries(main PRIVATE ${NETCDFF_LIBRARIES})
-
-
 
 
 

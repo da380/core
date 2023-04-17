@@ -670,7 +670,7 @@ contains
     nth = self%nth
     nph = self%nph
     fac = twopi/nph
-    area = 0.0_dp
+    int = 0.0_dp
     do ith = 1,nth
        tmp = sum(u(:,ith))
        int = int + tmp*self%w(ith)*fac
@@ -689,7 +689,7 @@ contains
     nth = self%nth
     nph = self%nph
     fac = twopi/nph
-    area = 0.0_dp
+    int = 0.0_dp
     do ith = 1,nth
        tmp = sum(u(:,ith))
        int = int + tmp*self%w(ith)*fac
