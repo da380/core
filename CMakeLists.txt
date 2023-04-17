@@ -4,36 +4,31 @@ project(core)
 enable_language(Fortran)
 
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod)
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-    set(dialect " -O3")
-    set(bounds "-fbounds-check")
+    set(flags " -O3")
+    set(debug_flags "-bounds-check")
 endif()
-if(CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    set(dialect "-stand f08 -free -implicitnone")
-    set(bounds "-check bounds")
-endif()
-if(CMAKE_Fortran_COMPILER_ID MATCHES "PGI")
-    set(dialect "-Mfreeform -Mdclchk -Mstandard -Mallocatable=03")
-    set(bounds "-C")
-  endif()
 
+set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} ${debug_flags}")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${flags}")
 
-
-set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} ${bounds}")
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${dialect}")
-
-
+#find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
-find_package(FFTW3 COMPONENTS double single threads REQUIRED)
+find_package(FFTW3  REQUIRED)
 include_directories(${FFTW3_INCLUDE_DIR})
 find_package(NETCDFF REQUIRED)
 include_directories(${NETCDFF_INCLUDE_DIR})
 
+list(APPEND LIBS ${LAPACK_LIBRARIES})
+list(APPEND LIBS ${FFTW3_LIBRARIES})
+list(APPEND LIBS ${NETCDFF_LIBRARIES})
 
-SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_SOURCE_DIR}/mod)
 SET(SRC_DIR ${CMAKE_SOURCE_DIR}/src/)
-
 list(APPEND SRC "${SRC_DIR}module_constants.f90")
 list(APPEND SRC "${SRC_DIR}module_physical_constants.f90")
 list(APPEND SRC "${SRC_DIR}module_error.f90")
@@ -47,23 +42,25 @@ list(APPEND SRC "${SRC_DIR}module_spherical_model.f90")
 list(APPEND SRC "${SRC_DIR}module_PREM.f90")
 list(APPEND SRC "${SRC_DIR}module_DECK.f90")
 list(APPEND SRC "${SRC_DIR}module_spherical_mesh.f90")
-#list(APPEND SRC "${SRC_DIR}module_random_fields.f90")
-#list(APPEND SRC "${SRC_DIR}module_LAPACK.f90")
-#list(APPEND SRC "${SRC_DIR}module_SEM_1D.f90")
 
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+add_library(CORE_MODULES ${SRC})
+target_link_libraries(CORE_MODULES PRIVATE ${LIBS})
 
-list(APPEND LIBS ${LAPACK_LIBRARIES})
-list(APPEND LIBS ${FFTW3_LIBRARIES})
-list(APPEND LIBS ${NETCDFF_LIBRARIES})
 
 set(TEST_DIR ${CMAKE_SOURCE_DIR}/src/tests/)
 
-add_executable(test ${TEST_DIR}test.f90 ${SRC})
-target_link_libraries(test PRIVATE ${LIBS})
+add_executable(test ${TEST_DIR}test.f90)
+target_link_libraries(test PRIVATE ${LIBS} CORE_MODULES)
 
+add_executable(test_spherical_harmonics ${TEST_DIR}test_spherical_harmonics.f90)
+target_link_libraries(test_spherical_harmonics PRIVATE ${LIBS} CORE_MODULES)
 
-add_executable(test_spherical_harmonics ${TEST_DIR}test_spherical_harmonics.f90 ${SRC})
-target_link_libraries(test_spherical_harmonics PRIVATE ${LIBS})
+add_executable(test_fftw3 ${TEST_DIR}test_fftw3.f90)
+target_link_libraries(test_fftw3 PRIVATE ${LIBS} CORE_MODULES)
+
+add_executable(test_quadrature ${TEST_DIR}test_quadrature.f90)
+target_link_libraries(test_quadrature PRIVATE ${LIBS} CORE_MODULES)
 
 
 
