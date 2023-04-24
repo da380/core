@@ -3,7 +3,6 @@ module module_spherical_harmonics
   use module_constants
   use module_special_functions
   use module_error
-  use module_interp
   use, intrinsic :: iso_c_binding
 
   !===============================================================!

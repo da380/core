@@ -219,8 +219,6 @@ contains
     real(dp), dimension(n) :: alpha,beta
     real(dp), dimension(18*n) :: work
     real(dp), dimension(n,n) :: z
-
-
     
     ! set up the matrix
     do i = 1,n
@@ -229,7 +227,6 @@ contains
        beta(i)  = ix*ix/((2*ix-1)*(2*ix+1))
        beta(i)  = sqrt(beta(i))
     end do
-
     
     ! solve the eigenvalue problem
     lwork  = 18*n
@@ -239,7 +236,6 @@ contains
 
     ! get the weights
     w = 2.0_dp*z(1,:)**2
-
     
     return
   end subroutine build_gauss_quadrature

@@ -5,7 +5,6 @@ module module_SEM_1D
   use module_util
   use module_quadrature
   use module_special_functions
-  use module_LAPACK
   implicit none
 
   type mesh_1D
@@ -36,6 +35,7 @@ module module_SEM_1D
      procedure :: build_mesh_1D_simple
   end interface build_mesh_1D
 
+  
   
 contains
 
@@ -241,10 +241,9 @@ contains
   !==========================================================================!
 
   
-  subroutine build_laplace_mass_matrix_1D(mesh,ibool,a)
+  subroutine build_laplace_mass_matrix_1D(mesh,ibool)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    type(MatLAP), intent(inout) :: a
     integer(i4b) :: ispec,inode,i,k
     real(dp) :: jacl,tmp
     associate(nspec => mesh%nspec, & 
@@ -253,14 +252,13 @@ contains
               rho   => mesh%rho,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      call check(a%row_dim() == maxval(ibool),'build_mass_matrix_1D','row dimension is wrong')      
       do ispec = 1,nspec
          jacl  = jac(ispec)
          do inode = 1,ngll
             i = ibool(inode,ispec)
             if(i == 0) cycle
             tmp = rho(inode,ispec)*w(inode)*jacl
-            call a%set(i,i,tmp,inc=.true.)
+!            call a%set(i,i,tmp,inc=.true.)
          end do
       end do
     end associate
@@ -268,10 +266,9 @@ contains
   end subroutine build_laplace_mass_matrix_1D
 
   
-  subroutine build_laplace_stiffness_matrix_1D(mesh,ibool,a)
+  subroutine build_laplace_stiffness_matrix_1D(mesh,ibool)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
-    type(MatLAP), intent(inout) :: a
     integer(i4b) :: ispec,inode,jnode,knode,i,j,k
     real(dp) :: ijacl,tmp,fac
     associate(nspec => mesh%nspec, & 
@@ -280,7 +277,6 @@ contains
               mu    => mesh%mu,    &
               w     => mesh%w,     &
               hp    => mesh%hp)
-      call check(a%row_dim() == maxval(ibool),'build_stiffness_matrix_1D','row dimension is wrong')      
       do ispec = 1,nspec
          ijacl  = 1.0_dp/jac(ispec)
          do inode = 1,ngll
@@ -296,12 +292,12 @@ contains
                             * hp(knode,jnode) &
                             * w(knode)*ijacl
                end do
-               call a%set(i,j,tmp,inc=.true.)
+!               call a%set(i,j,tmp,inc=.true.)
             end do
          end do
       end do
     end associate
-    call a%mirror_upper()
+!    call a%mirror_upper()
     return
   end subroutine build_laplace_stiffness_matrix_1D
 
