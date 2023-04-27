@@ -309,7 +309,7 @@ contains
     class(PREM_solid_elastic_layer), intent(in) :: self
     real(dp), intent(in) :: r
     real(dp) :: A
-    A = self%rho(r)*poly(4,vpv_coef_PREM(:,self%i),r/r_PREM(2,13))**2
+    A = self%rho(r)*poly(4,vph_coef_PREM(:,self%i),r/r_PREM(2,13))**2
     return
   end function A_PREM_solid_elastic_layer
   

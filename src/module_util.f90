@@ -30,11 +30,10 @@ contains
   !             polynomial evaluation            !
   !==============================================!
   
-  function poly(n,coef,x) result(y)
+  real(dp) function poly(n,coef,x) result(y)
     integer(i4b), intent(in) :: n
     real(dp), dimension(n), intent(in) :: coef
     real(dp), intent(in) :: X
-    real(dp) :: y
     integer(i4b) :: i
     y = coef(n)
     do i = n-1,1,-1
@@ -43,11 +42,27 @@ contains
   end function poly
 
 
+  real(dp) function dpoly(n,coef,x) result(dy)
+    integer(i4b), intent(in) :: n
+    real(dp), dimension(n), intent(in) :: coef
+    real(dp), intent(in) :: X
+    integer(i4b) :: i
+    dy = (n-1)*coef(n)
+    do i = n-1,2,-1
+       dy = (i-1)*coef(i) + x*dy
+    end do
+  end function dpoly
+
+
   !==============================================!
   !              search ordered list             !
   !==============================================!
   
   function bisect_list(xx,x) result(il)
+    ! returns a value of i such that
+    ! xx(i) <= x <= x(i+1)
+    ! if x < xx(1) returns 0
+    ! if x >= xx(n) returns n
     implicit none
     real(dp), dimension(:), intent(in) :: xx
     real(dp), intent(in) :: x
@@ -56,11 +71,11 @@ contains
     integer(i4b) :: n,im,iu    
     n = size(xx)
     ascnd = xx(n) > xx(1)      
-    il = 1
-    iu = n
+    il = 0
+    iu = n+1
     do while(iu-il > 1)
        im = (il+iu)/2       
-       if((x >= xx(im)) .eqv.  ascnd) then
+       if((x >= xx(im)) .eqv. ascnd) then
           il = im
        else
           iu = im
@@ -71,6 +86,10 @@ contains
 
 
   function hunt_list(xx,x,it) result(il)
+    ! returns a value of i such that
+    ! xx(i) <= x <= x(i+1)
+    ! if x < xx(1) returns 0
+    ! if x >= xx(n) returns n
     implicit none
     real(dp), dimension(:), intent(in) :: xx
     real(dp), intent(in) :: x
@@ -80,7 +99,7 @@ contains
     integer(i4b) :: n,im,iu,inc    
     n = size(xx)
     ascnd = xx(n) > xx(1)      
-    if(it < 1 .or. it >= n) then
+    if(it <= 0 .or. it >= n) then
        il =  bisect_list(xx,x)
        return
     end if
@@ -327,7 +346,7 @@ contains
 
 
   !==============================================!
-  !             command line routines            !
+  !           Gaussian random numbers            !
   !==============================================!
   
 
@@ -340,7 +359,6 @@ contains
     if(r > 0.0_dp) then
        r = sqrt(r)
     else
-       print *, 'hello'
        r = 0.0_dp
     end if
     ran1 = r*cos(twopi*u2)
@@ -357,7 +375,6 @@ contains
     if(r > 0.0_dp) then
        r = sqrt(r)
     else
-       print *, 'hello'
        r = 0.0_dp
     end if
     ran = r*cos(twopi*u2)    
