@@ -1,7 +1,7 @@
 program test_spherical_model
 
   use module_constants
-  use module_physical_constants
+  use module_physical_constants  
   use module_spherical_model_new
   use module_PREM_new
 
