@@ -3,6 +3,7 @@ module module_SEM_1D
   use module_constants
   use module_error
   use module_util
+  use module_linalg
   use module_quadrature
   use module_special_functions
   implicit none
@@ -224,11 +225,12 @@ contains
   !==========================================================================!
 
   
-  subroutine build_laplace_mass_matrix_1D(mesh,ibool)
+  subroutine build_laplace_mass_matrix_1D(mesh,ibool,mlist)
     class(mesh_1D), intent(in) :: mesh
     integer(i4b), dimension(:,:), intent(in) :: ibool
+    type(matrix_list), intent(inout) :: mlist
     integer(i4b) :: ispec,inode,i,k
-    real(dp) :: jacl,tmp
+    real(dp) :: jacl,tmp   
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
               jac   => mesh%jac,   &
@@ -240,7 +242,7 @@ contains
             i = ibool(inode,ispec)
             if(i == 0) cycle
             tmp = w(inode)*jacl
-!            call a%set(i,i,tmp,inc=.true.)
+            call mlist%add(i,i,tmp)
          end do
       end do
     end associate
@@ -248,40 +250,38 @@ contains
   end subroutine build_laplace_mass_matrix_1D
 
   
-!  subroutine build_laplace_stiffness_matrix_1D(mesh,ibool)
-!    class(mesh_1D), intent(in) :: mesh
-!    integer(i4b), dimension(:,:), intent(in) :: ibool
-!    integer(i4b) :: ispec,inode,jnode,knode,i,j,k
-!    real(dp) :: ijacl,tmp,fac
-!    associate(nspec => mesh%nspec, & 
-!              ngll  => mesh%ngll,  &
-!              jac   => mesh%jac,   &
-!              mu    => mesh%mu,    &
-!              w     => mesh%w,     &
-!              hp    => mesh%hp)
-!      do ispec = 1,nspec
-!         ijacl  = 1.0_dp/jac(ispec)
-!         do inode = 1,ngll
-!            i = ibool(inode,ispec)
-!            if(i == 0) cycle
-!            do jnode = inode,ngll
-!               j = ibool(jnode,ispec)
-!               if(j == 0) cycle
-!               tmp = 0.0_dp
-!               do knode = 1,ngll
-!                  tmp = tmp + mu(knode,ispec) &
-!                            * hp(knode,inode) &
-!                            * hp(knode,jnode) &
-!                            * w(knode)*ijacl
-!               end do
-!               call a%set(i,j,tmp,inc=.true.)
-!            end do
-!         end do
-!      end do
-!    end associate
-!    call a%mirror_upper()
-!    return
-!  end subroutine build_laplace_stiffness_matrix_1D
+  subroutine build_laplace_stiffness_matrix_1D(mesh,ibool,mlist)
+    class(mesh_1D), intent(in) :: mesh
+    integer(i4b), dimension(:,:), intent(in) :: ibool
+    type(matrix_list), intent(inout) :: mlist
+    integer(i4b) :: ispec,inode,jnode,knode,i,j,k
+    real(dp) :: ijacl,tmp,fac
+    associate(nspec => mesh%nspec, & 
+              ngll  => mesh%ngll,  &
+              jac   => mesh%jac,   &
+              w     => mesh%w,     &
+              hp    => mesh%hp)
+      do ispec = 1,nspec
+         ijacl  = 1.0_dp/jac(ispec)
+         do inode = 1,ngll
+            i = ibool(inode,ispec)
+            if(i == 0) cycle
+            do jnode = inode,ngll
+               j = ibool(jnode,ispec)
+               if(j == 0) cycle
+               tmp = 0.0_dp
+               do knode = 1,ngll
+                  tmp = tmp + hp(knode,inode) &
+                            * hp(knode,jnode) &
+                            * w(knode)*ijacl
+               end do
+               call mlist%add(i,j,tmp)
+            end do
+         end do
+      end do
+    end associate
+    return
+  end subroutine build_laplace_stiffness_matrix_1D
 
 
   
