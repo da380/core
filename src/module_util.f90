@@ -55,6 +55,21 @@ contains
 
 
   !==============================================!
+  !               sorting functions              !
+  !==============================================!
+
+  subroutine sort_integer(a)
+    integer(i4b), dimension(:), intent(in) :: a
+
+    integer(i4b) :: n,ir,l
+
+
+
+    
+    return
+  end subroutine sort_integer
+
+  !==============================================!
   !              search ordered list             !
   !==============================================!
   
