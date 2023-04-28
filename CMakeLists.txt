@@ -33,6 +33,7 @@ list(APPEND SRC "${SRC_DIR}module_constants.f90")
 list(APPEND SRC "${SRC_DIR}module_physical_constants.f90")
 list(APPEND SRC "${SRC_DIR}module_error.f90")
 list(APPEND SRC "${SRC_DIR}module_util.f90")
+list(APPEND SRC "${SRC_DIR}module_linalg.f90")
 list(APPEND SRC "${SRC_DIR}module_fftw3.f90")
 list(APPEND SRC "${SRC_DIR}module_interp.f90")
 list(APPEND SRC "${SRC_DIR}module_special_functions.f90")
@@ -72,6 +73,10 @@ target_link_libraries(test_interp PRIVATE ${LIBS} Core)
 
 add_executable(test_spherical_model ${TEST_DIR}test_spherical_model.f90)
 target_link_libraries(test_spherical_model PRIVATE ${LIBS} Core)
+
+
+add_executable(test_SEM_1D ${TEST_DIR}test_SEM_1D.f90)
+target_link_libraries(test_SEM_1D PRIVATE ${LIBS} Core)
 
 
 

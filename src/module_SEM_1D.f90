@@ -7,6 +7,8 @@ module module_SEM_1D
   use module_special_functions
   implicit none
 
+
+
   type mesh_1D
      logical :: allocated = .false.
      logical, private :: left_dirichlet  = .false.
@@ -14,8 +16,6 @@ module module_SEM_1D
      integer(i4b) :: nspec = 0
      integer(i4b) :: ngll  = 0
      real(dp), dimension(:,:), allocatable :: x
-     real(dp), dimension(:,:), allocatable :: rho
-     real(dp), dimension(:,:), allocatable :: mu
      real(dp), dimension(:), allocatable :: jac
      real(dp), dimension(:), allocatable :: w
      real(dp), dimension(:,:), allocatable :: hp     
@@ -32,7 +32,7 @@ module module_SEM_1D
   interface build_mesh_1D
      procedure :: build_mesh_1D
      procedure :: build_mesh_1D_constant_dx
-     procedure :: build_mesh_1D_simple
+     procedure :: build_mesh_1D_interval
   end interface build_mesh_1D
 
   
@@ -51,8 +51,6 @@ contains
     self%nspec = 0
     self%ngll  = 0
     deallocate(self%x)
-    deallocate(self%rho)    
-    deallocate(self%mu)    
     deallocate(self%jac)
     deallocate(self%w)
     deallocate(self%hp)
@@ -60,17 +58,6 @@ contains
     return
   end subroutine deallocate_mesh_1D
 
-
-  subroutine test(x,fun)
-    real(dp), intent(in) :: x
-    interface
-       real(dp) function fun(x)
-         use module_constants
-         real(dp), intent(in) :: x
-       end function fun
-    end interface
-    return
-  end subroutine test
   
   type(mesh_1D) function build_mesh_1D(ngll,x,dx) result(mesh)
     integer(i4b), intent(in) :: ngll
@@ -99,8 +86,6 @@ contains
     mesh%nspec = nspec
     mesh%ngll = ngll
     allocate(mesh%x(ngll,nspec))
-    allocate(mesh%rho(ngll,nspec))
-    allocate(mesh%mu(ngll,nspec))
     allocate(mesh%jac(nspec))
     allocate(mesh%hp(ngll,ngll))
     mesh%allocated = .true.
@@ -129,8 +114,6 @@ contains
           x2_loc = x1_loc+dx_loc
           do inode = 1,ngll
              mesh%x(inode,ispec) = x1_loc + 0.5_dp*dx_loc*(quad%x(inode)+1.0_dp)
-             mesh%rho(inode,ispec) = 1.0_dp
-             mesh%mu(inode,ispec) = 1.0_dp
           end do
           mesh%jac(ispec) = 0.5_dp*(dx_loc)
        end do
@@ -152,7 +135,7 @@ contains
     return
   end function build_mesh_1D_constant_dx
 
-  type(mesh_1D) function build_mesh_1D_simple(ngll,x1,x2,dx) result(mesh)
+  type(mesh_1D) function build_mesh_1D_interval(ngll,x1,x2,dx) result(mesh)
     integer(i4b), intent(in) :: ngll
     real(dp), intent(in) :: x1,x2,dx
     real(dp), dimension(2) :: x_loc
@@ -162,7 +145,7 @@ contains
     dx_loc(1) = dx
     mesh = build_mesh_1D(ngll,x_loc,dx_loc)
     return
-  end function build_mesh_1D_simple
+  end function build_mesh_1D_interval
 
 
   subroutine set_dirichlet_mesh_1D(mesh)
@@ -249,7 +232,6 @@ contains
     associate(nspec => mesh%nspec, & 
               ngll  => mesh%ngll,  &
               jac   => mesh%jac,   &
-              rho   => mesh%rho,   &
               w     => mesh%w,     &
               hp    => mesh%hp)
       do ispec = 1,nspec
@@ -257,7 +239,7 @@ contains
          do inode = 1,ngll
             i = ibool(inode,ispec)
             if(i == 0) cycle
-            tmp = rho(inode,ispec)*w(inode)*jacl
+            tmp = w(inode)*jacl
 !            call a%set(i,i,tmp,inc=.true.)
          end do
       end do
@@ -266,40 +248,40 @@ contains
   end subroutine build_laplace_mass_matrix_1D
 
   
-  subroutine build_laplace_stiffness_matrix_1D(mesh,ibool)
-    class(mesh_1D), intent(in) :: mesh
-    integer(i4b), dimension(:,:), intent(in) :: ibool
-    integer(i4b) :: ispec,inode,jnode,knode,i,j,k
-    real(dp) :: ijacl,tmp,fac
-    associate(nspec => mesh%nspec, & 
-              ngll  => mesh%ngll,  &
-              jac   => mesh%jac,   &
-              mu    => mesh%mu,    &
-              w     => mesh%w,     &
-              hp    => mesh%hp)
-      do ispec = 1,nspec
-         ijacl  = 1.0_dp/jac(ispec)
-         do inode = 1,ngll
-            i = ibool(inode,ispec)
-            if(i == 0) cycle
-            do jnode = inode,ngll
-               j = ibool(jnode,ispec)
-               if(j == 0) cycle
-               tmp = 0.0_dp
-               do knode = 1,ngll
-                  tmp = tmp + mu(knode,ispec) &
-                            * hp(knode,inode) &
-                            * hp(knode,jnode) &
-                            * w(knode)*ijacl
-               end do
+!  subroutine build_laplace_stiffness_matrix_1D(mesh,ibool)
+!    class(mesh_1D), intent(in) :: mesh
+!    integer(i4b), dimension(:,:), intent(in) :: ibool
+!    integer(i4b) :: ispec,inode,jnode,knode,i,j,k
+!    real(dp) :: ijacl,tmp,fac
+!    associate(nspec => mesh%nspec, & 
+!              ngll  => mesh%ngll,  &
+!              jac   => mesh%jac,   &
+!              mu    => mesh%mu,    &
+!              w     => mesh%w,     &
+!              hp    => mesh%hp)
+!      do ispec = 1,nspec
+!         ijacl  = 1.0_dp/jac(ispec)
+!         do inode = 1,ngll
+!            i = ibool(inode,ispec)
+!            if(i == 0) cycle
+!            do jnode = inode,ngll
+!               j = ibool(jnode,ispec)
+!               if(j == 0) cycle
+!               tmp = 0.0_dp
+!               do knode = 1,ngll
+!                  tmp = tmp + mu(knode,ispec) &
+!                            * hp(knode,inode) &
+!                            * hp(knode,jnode) &
+!                            * w(knode)*ijacl
+!               end do
 !               call a%set(i,j,tmp,inc=.true.)
-            end do
-         end do
-      end do
-    end associate
+!            end do
+!         end do
+!      end do
+!    end associate
 !    call a%mirror_upper()
-    return
-  end subroutine build_laplace_stiffness_matrix_1D
+!    return
+!  end subroutine build_laplace_stiffness_matrix_1D
 
 
   
