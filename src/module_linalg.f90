@@ -37,7 +37,12 @@ module module_linalg
      procedure :: matrix_list_to_complex_banded
      generic, public :: banded => matrix_list_to_real_banded, & 
                                   matrix_list_to_complex_banded
+     procedure :: matrix_list_to_real_hermitian_banded
+     procedure :: matrix_list_to_complex_hermitian_banded
+     generic, public :: hermitian_banded => matrix_list_to_real_hermitian_banded, & 
+                                  matrix_list_to_complex_hermitian_banded
 
+     
      
   end type matrix_list
 
