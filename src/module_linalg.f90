@@ -8,7 +8,6 @@ module module_linalg
   type :: matrix_list
      
      private
-     logical :: allocated = .false.
      logical :: real = .true.
      logical :: herm = .false.
      integer(i4b) :: m = 0
@@ -59,10 +58,8 @@ contains
     a%n = n
     if(present(real)) a%real = real
     if(present(herm)) then
-       if(m == n) then
-          a%herm = herm
-       else
-          print *, 'allocate_matrix_list: matrix dimensions do not match. Hermitian option ignored.'
+       if(m == n .and. herm) then
+          a%herm = .true.
        end if
     end if
     if(present(avail)) then
@@ -77,7 +74,6 @@ contains
     else
        allocate(a%cdat(a%avail))
     end if
-    a%allocated = .true.
     return
   end function allocate_matrix_list
 
@@ -94,7 +90,6 @@ contains
     self%m = 0
     self%herm = .false.
     self%real = .true.
-    self%allocated = .false.
     return
   end subroutine deallocate_matrix_list
 
