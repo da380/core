@@ -5,15 +5,17 @@ module module_linalg
   use module_error
   implicit none
 
+  
   type :: matrix_list
      
      private
+     logical :: allocated = .false.
      logical :: real = .true.
      logical :: herm = .false.
      integer(i4b) :: m = 0
      integer(i4b) :: n = 0     
      integer(i4b) :: saved = 0
-     integer(i4b) :: avail = 0
+     integer(i4b) :: reserve = 0
      integer(i4b), dimension(:), allocatable :: row
      integer(i4b), dimension(:), allocatable :: col     
      real(dp), dimension(:), allocatable :: rdat
@@ -40,7 +42,7 @@ module module_linalg
      procedure :: matrix_list_to_real_hermitian_banded
      procedure :: matrix_list_to_complex_hermitian_banded
      generic, public :: hermitian_banded => matrix_list_to_real_hermitian_banded, & 
-                                  matrix_list_to_complex_hermitian_banded
+                                            matrix_list_to_complex_hermitian_banded
 
      
      
@@ -49,16 +51,26 @@ module module_linalg
   interface matrix_list
      procedure :: allocate_matrix_list
   end interface matrix_list
+
+
   
 
 contains
 
-  type(matrix_list) function allocate_matrix_list(m,n,real,herm,avail) result(a)
+
+  !==================================================================================!
+  !==================================================================================!
+  !                               matrix list routines                               !
+  !==================================================================================!
+  !==================================================================================!
+  
+  
+  type(matrix_list) function allocate_matrix_list(m,n,real,herm,reserve) result(a)
     integer(i4b), intent(in) :: m
     integer(i4b), intent(in) :: n
     logical, intent(in), optional :: real
     logical, intent(in), optional :: herm
-    integer(i4b), intent(in), optional :: avail
+    integer(i4b), intent(in), optional :: reserve
     a%m = m
     a%n = n
     if(present(real)) a%real = real
@@ -67,18 +79,19 @@ contains
           a%herm = .true.
        end if
     end if
-    if(present(avail)) then
-       a%avail = avail
+    if(present(reserve)) then
+       a%reserve = reserve
     else
-       a%avail = 5*max(m,n)
+       a%reserve = 5*max(m,n)
     end if
-    allocate(a%row(a%avail))
-    allocate(a%col(a%avail))    
+    allocate(a%row(a%reserve))
+    allocate(a%col(a%reserve))    
     if(a%real) then
-       allocate(a%rdat(a%avail))
+       allocate(a%rdat(a%reserve))
     else
-       allocate(a%cdat(a%avail))
+       allocate(a%cdat(a%reserve))
     end if
+    a%allocated = .true.
     return
   end function allocate_matrix_list
 
@@ -89,12 +102,13 @@ contains
     if(allocated(self%rdat)) deallocate(self%rdat)
     if(allocated(self%col))  deallocate(self%col)
     if(allocated(self%row))  deallocate(self%row)
-    self%avail = 0
+    self%reserve = 0
     self%saved = 0
     self%n = 0
     self%m = 0
     self%herm = .false.
     self%real = .true.
+    self%allocated = .false.
     return
   end subroutine deallocate_matrix_list
 
@@ -103,42 +117,47 @@ contains
     class(matrix_list), intent(inout) :: self
     integer(i4b), intent(in), optional :: add
 
-    integer(i4b) :: avail_new,saved
+    integer(i4b) :: reserve_new,saved
     integer(i4b), dimension(:), allocatable :: row,col
     real(dp), dimension(:), allocatable :: rdat
     complex(dpc), dimension(:), allocatable :: cdat
 
+
+    print *, 'reallocating!'
+    
+    if(.not.self%allocated) call error('reallocate_matrix_list','matrix list not initialised!')
+    
     if(present(add)) then       
-       avail_new = self%avail + add
-       call check(avail_new >= 0,'reallocate_matrix_list','avail_new < 0')
+       reserve_new = self%reserve + add
+       call check(reserve_new >= 0,'reallocate_matrix_list','reserve_new < 0')
     else
-       avail_new = max(2*self%avail,1)
+       reserve_new = max(2*self%reserve,1)
     end if
-    saved = min(self%saved,avail_new)
+    saved = min(self%saved,reserve_new)
 
     ! copy the row information
-    allocate(row(avail_new))
+    allocate(row(reserve_new))
     row(1:saved) = self%row(1:saved)
     call move_alloc(row,self%row)
 
     ! copy the column information
-    allocate(col(avail_new))
+    allocate(col(reserve_new))
     col(1:saved) = self%col(1:saved)
     call move_alloc(col,self%col)
 
     ! copy the data
     if(self%real) then
-       allocate(rdat(avail_new))
+       allocate(rdat(reserve_new))
        rdat(1:saved) = self%rdat(1:saved)
        call move_alloc(rdat,self%rdat)
     else
-       allocate(cdat(avail_new))
+       allocate(cdat(reserve_new))
        cdat(1:saved) = self%cdat(1:saved)
        call move_alloc(cdat,self%cdat)
     end if
 
-    ! update the available space
-    self%avail = avail_new    
+    ! update the reserved space
+    self%reserve = reserve_new    
     
     return
   end subroutine reallocate_matrix_list
@@ -150,7 +169,7 @@ contains
     integer(i4b) :: k
     
     print *, ''
-    print *, 'saved = ',self%saved,', available = ',self%avail
+    print *, 'saved = ',self%saved,', reserved = ',self%reserve
     print *, 'elements:'
     do k = 1,self%saved
        if(self%real) then
@@ -176,7 +195,7 @@ contains
 
     ! check if reallocatation is needed
     k = self%saved + 1
-    if(k > self%avail) call self%reallocate()   
+    if(k > self%reserve) call self%reallocate()   
 
     ! check for required symmetry
     if(self%herm .and. i > j) then
@@ -212,7 +231,7 @@ contains
 
     ! check if reallocation is needed
     k= self%saved + 1
-    if(k > self%avail) call self%reallocate()
+    if(k > self%reserve) call self%reallocate()
 
     ! deal with required symmetry
     if(self%herm .and. i > j) then

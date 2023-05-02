@@ -30,11 +30,11 @@ module module_SEM_1D
      procedure :: set_right_neumann => set_neumann_right_mesh_1D     
   end type mesh_1D
 
-  interface build_mesh_1D
+  interface mesh_1D
      procedure :: build_mesh_1D
      procedure :: build_mesh_1D_constant_dx
      procedure :: build_mesh_1D_interval
-  end interface build_mesh_1D
+  end interface mesh_1D
 
   
   
@@ -91,10 +91,11 @@ contains
     allocate(mesh%hp(ngll,ngll))
     mesh%allocated = .true.
 
+    
     ! set the quadrature scheme
     call quad%set(ngll)
     mesh%w = quad%w
-
+    
     ! store the lagrange derivatives
     do inode = 1,ngll
        call lagrange_polynomial(quad%x(inode),ngll,quad%x,h,mesh%hp(inode,:))

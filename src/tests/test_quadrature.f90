@@ -14,7 +14,6 @@ program quadrature_test
   type(gauss_lobatto_quadrature) :: quad3   
 
   
-
   
   print *, '===================================='
   print *, 'Gauss quadrature'
