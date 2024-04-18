@@ -3,7 +3,7 @@ module module_random_fields
   use module_constants
   use module_util
   use module_error
-  use module_LAPACK
+  !use module_LAPACK
   use module_quadrature
   use module_interp
   use module_fftw3

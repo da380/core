@@ -28,7 +28,6 @@ program test_random_field
   if(.not.found_command_argument('-sigma',sigma)) stop 'sigma missing'
 
 
-!  fun = GRF_1D_SEM(x1,x2,lambda,s,sigma)
   fun = GRF_1D_Fourier(x1,x2,lambda,s,sigma)
   
   call fun%sample(100)
@@ -47,40 +46,7 @@ program test_random_field
  
   
   
-  !----------------------------------------!
-  !   test random functions on a sphere    !
-  !----------------------------------------!
-
-  ! generate the random field
-  fun_S2 = build_GRF_S2_SH(lambda,s,sigma,asph = .true.)
-  call fun_S2%sample(10)
-
-  ! build a GL-grid
-  lmax = max(128,fun_S2%degree())
-  call grid%build(lmax,0)
-  allocate(ulm(grid%ncoef_r))
-  allocate(u(grid%nph,grid%nth))
   
-  th0 = -20.0_dp
-  ph0 = 100.0_dp
-  th0 = (90.0_dp-th0)*deg2rad
-  ph0 = ph0*deg2rad
-  call fun_S2%coef(fun_S2%ns/2,lmax,ulm)
-!  call fun_S2%corr_coef(th0,ph0,lmax,ulm)  
-  call grid%SH_itrans(ulm,u)
-  
- 
-  ! write out the field
-  open(newunit = io,file='random_S2.out')
-  write(io,*) grid%nth,grid%nph,0.0_dp
-  do ith = 1,grid%nth
-     th = grid%th(ith)
-     do iph = 1,grid%nph
-        ph = grid%ph(iph)
-        write(io,*) ph,th,u(iph,ith)
-     end do
-  end do
-  close(io)    
 
   
   

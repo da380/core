@@ -40,12 +40,14 @@ list(APPEND SRC "${SRC_DIR}module_special_functions.f90")
 list(APPEND SRC "${SRC_DIR}module_quadrature.f90")
 list(APPEND SRC "${SRC_DIR}module_spherical_harmonics.f90")
 list(APPEND SRC "${SRC_DIR}module_SEM_1D.f90")
-list(APPEND SRC "${SRC_DIR}module_spherical_model.f90")
-list(APPEND SRC "${SRC_DIR}module_spherical_model_new.f90")
-list(APPEND SRC "${SRC_DIR}module_PREM.f90")
-list(APPEND SRC "${SRC_DIR}module_PREM_new.f90")
-list(APPEND SRC "${SRC_DIR}module_DECK.f90")
-list(APPEND SRC "${SRC_DIR}module_spherical_mesh.f90")
+list(APPEND SRC "${SRC_DIR}module_random_fields.f90")
+
+#list(APPEND SRC "${SRC_DIR}module_spherical_model.f90")
+#list(APPEND SRC "${SRC_DIR}module_spherical_model_new.f90")
+#list(APPEND SRC "${SRC_DIR}module_PREM.f90")
+#list(APPEND SRC "${SRC_DIR}module_PREM_new.f90")
+#list(APPEND SRC "${SRC_DIR}module_DECK.f90")
+#list(APPEND SRC "${SRC_DIR}module_spherical_mesh.f90")
 
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
@@ -71,12 +73,11 @@ add_executable(test_interp ${TEST_DIR}test_interp.f90)
 target_link_libraries(test_interp PRIVATE ${LIBS} Core)
 
 
-add_executable(test_spherical_model ${TEST_DIR}test_spherical_model.f90)
-target_link_libraries(test_spherical_model PRIVATE ${LIBS} Core)
-
-
 add_executable(test_SEM_1D ${TEST_DIR}test_SEM_1D.f90)
 target_link_libraries(test_SEM_1D PRIVATE ${LIBS} Core)
+
+add_executable(test_random_field ${TEST_DIR}test_random_field.f90)
+target_link_libraries(test_random_field PRIVATE ${LIBS} Core)
 
 
 
